@@ -2506,9 +2506,11 @@ function ilacPlan(){
   if(!sirali.length){toast('Ilac kaydi bulunamadi');return;}
 
   var rows='';
+  window._ilacMlMap={};
   sirali.forEach(function(ad,idx){
     var g=grup[ad];
     var mlGoster=g.ml>=1000?(g.ml/1000).toFixed(2)+' kg/lt':Math.round(g.ml)+' ml/gr';
+    window._ilacMlMap[idx]=g.ml;
     var eksikStr=g.eksik>0?' <span style="color:#e67e22;font-size:11px">('+g.eksik+' kayıtta doz girilmemis)</span>':'';
     rows+='<div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:10px">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
@@ -2546,23 +2548,49 @@ function ilacPlan(){
 
 function ilacAmbalajHesap(btn){
   var idx=btn.getAttribute('data-idx');
-  var toplamMl=parseFloat(btn.getAttribute('data-ml'))||0;
+  // data-ml'den değer al - string olarak gelir, parse et
+  var toplamMl=(window._ilacMlMap&&window._ilacMlMap[idx])||parseFloat(btn.getAttribute('data-ml')||'0')||0;
+  
+  // Alternatif: parent'tan hesapla - güvenlik için
+  if(!toplamMl||toplamMl<=0){
+    // Butona yakın .ml-deger elementi var mı?
+    var parent=btn.parentElement&&btn.parentElement.parentElement;
+    if(parent){
+      var mlEl=parent.querySelector('[data-toplam-ml]');
+      if(mlEl)toplamMl=parseFloat(mlEl.getAttribute('data-toplam-ml'))||0;
+    }
+  }
+
   var hacim=parseFloat(document.getElementById('ha'+idx).value)||0;
-  var birim=document.getElementById('bi'+idx).value;
+  var birimEl=document.getElementById('bi'+idx);
+  var birim=birimEl?birimEl.value:'ml';
   var sonuc=document.getElementById('sr'+idx);
+  
   if(!hacim||hacim<=0){toast('Ambalaj hacmini gir!');return;}
-  if(!toplamMl){toast('Toplam ilac 0! Doz girilmis mi kontrol et.');return;}
 
   // Hepsini ml/gr bazına çevir
   var hacimMl;
   if(birim==='lt')hacimMl=hacim*1000;
   else if(birim==='kg')hacimMl=hacim*1000;
-  else hacimMl=hacim; // ml veya gr
+  else hacimMl=hacim;
+
+  // toplamMl hala 0 ise - gösterilen değerden hesapla
+  if(!toplamMl||toplamMl<=0){
+    var gosterEl=btn.parentElement&&btn.parentElement.previousElementSibling;
+    if(gosterEl){
+      var txt=gosterEl.textContent||'';
+      var kgMatch=txt.match(/([\d.]+)\s*kg/);
+      var mlMatch=txt.match(/([\d.]+)\s*ml/);
+      if(kgMatch)toplamMl=parseFloat(kgMatch[1])*1000;
+      else if(mlMatch)toplamMl=parseFloat(mlMatch[1]);
+    }
+  }
+
+  if(!toplamMl||toplamMl<=0){toast('Toplam ilac hesaplanamadi!');return;}
 
   var adet=Math.ceil(toplamMl/hacimMl);
   var topStr=toplamMl>=1000?(toplamMl/1000).toFixed(2)+'kg':Math.round(toplamMl)+'ml';
-  var hacimStr=hacim+birim;
-  sonuc.innerHTML='<b>'+adet+' ambalaj</b> kullanildi ('+topStr+' toplam / '+hacimStr+' ambalaj)';
+  sonuc.innerHTML='<b>'+adet+' ambalaj</b> kullanildi ('+topStr+' / '+hacim+birim+')';
 }
 
 
