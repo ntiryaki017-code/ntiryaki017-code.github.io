@@ -2450,12 +2450,11 @@ function kITekSil(ri){
 
 
 function ilacPlan(){
-  var kayitlar=[];
-  if(V.ilac&&V.ilac.kayitlar)kayitlar=kayitlar.concat(V.ilac.kayitlar);
-  if(V.arsiv){Object.keys(V.arsiv).forEach(function(y){var yv=V.arsiv[y];if(yv&&yv.ilac&&yv.ilac.kayitlar)kayitlar=kayitlar.concat(yv.ilac.kayitlar);});}
+  // Sadece aktif yılın kayıtları - çift sayım önle
+  var kayitlar=(V.ilac&&V.ilac.kayitlar)||[];
   var g={};kayitlar.forEach(function(k){
     if(!k)return;
-    var su=parseFloat(k.su)||0;
+    var su=parseInt(k.su)||0;
     var il=k.ilaclar&&k.ilaclar.length?k.ilaclar:(k.ilac?[{ad:k.ilac,doz100:parseFloat(k.doz100)||0}]:[]);
     il.forEach(function(x){
       var ad=typeof x==='string'?x:(x&&x.ad?x.ad:'');
