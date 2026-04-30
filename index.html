@@ -2450,7 +2450,26 @@ function kITekSil(ri){
 
 
 function ilacPlan(){
-  var kayitlar=(V.ilac&&V.ilac.kayitlar)||[];
+  // V.ilac.kayitlar + aktif yıl arşivi + tüm arşivler
+  var kayitlar=[];
+  // Direkt V.ilac
+  if(V.ilac&&V.ilac.kayitlar) kayitlar=kayitlar.concat(V.ilac.kayitlar);
+  // Aktif yıl arşivi
+  if(V.arsiv){
+    Object.keys(V.arsiv).forEach(function(yil){
+      var yilVeri=V.arsiv[yil];
+      if(yilVeri&&yilVeri.ilac&&yilVeri.ilac.kayitlar){
+        kayitlar=kayitlar.concat(yilVeri.ilac.kayitlar);
+      }
+    });
+  }
+  // Tekrarları kaldır (aynı id)
+  var gorülen={};
+  kayitlar=kayitlar.filter(function(k){
+    if(!k.id)return true;
+    if(gorülen[k.id])return false;
+    gorülen[k.id]=true;return true;
+  });
   if(!kayitlar.length){toast('Hic ilac kaydi yok!');return;}
 
   var grup={};
