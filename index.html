@@ -1633,31 +1633,28 @@ function iFotoSec(){
 }
 function fotoSec(cb){
   _fotoCB=cb;
-  if(window.Android&&Android.fotoSec){
-    Android.fotoSec();
-  } else {
-    // Web/PWA - gizli file input ile
-    var inp=document.getElementById('_fotoInput');
-    if(!inp){
-      inp=document.createElement('input');
-      inp.type='file';
-      inp.id='_fotoInput';
-      inp.accept='image/*';
-      inp.capture='environment'; // arka kamera
-      inp.style.display='none';
-      inp.onchange=function(){
-        if(!this.files||!this.files[0])return;
-        var reader=new FileReader();
-        reader.onload=function(e){
-          if(typeof _fotoCB==='function') _fotoCB(e.target.result);
-        };
-        reader.readAsDataURL(this.files[0]);
+  // Her platformda file input kullan (Android dahil)
+  var inp=document.getElementById('_fotoInput');
+  if(!inp){
+    inp=document.createElement('input');
+    inp.type='file';
+    inp.id='_fotoInput';
+    inp.accept='image/*';
+    inp.capture='environment';
+    inp.style.cssText='position:fixed;top:-1000px;left:-1000px;opacity:0;width:1px;height:1px';
+    inp.onchange=function(){
+      if(!this.files||!this.files[0])return;
+      var reader=new FileReader();
+      reader.onload=function(e){
+        if(typeof _fotoCB==='function') _fotoCB(e.target.result);
       };
-      document.body.appendChild(inp);
-    }
-    inp.value='';
-    inp.click();
+      reader.readAsDataURL(this.files[0]);
+    };
+    document.body.appendChild(inp);
   }
+  inp.value='';
+  // Android WebView'da click() çalışmayabilir - touch event simüle et
+  setTimeout(function(){inp.click();},50);
 }
 function kameraSec(cb){
   _fotoCB=cb;
@@ -2624,7 +2621,9 @@ function telefonYedekAl(){
 function telefonYedekYukle(){
   var inp=document.createElement('input');
   inp.type='file';
-  inp.accept='.json,application/json';
+  inp.accept='.json,application/json,text/plain,*/*';
+  inp.style.cssText='position:fixed;top:-1000px;left:-1000px;opacity:0;width:1px;height:1px';
+  document.body.appendChild(inp);
   inp.onchange=function(){
     if(!this.files||!this.files[0])return;
     var reader=new FileReader();
