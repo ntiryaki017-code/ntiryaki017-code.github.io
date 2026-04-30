@@ -79,7 +79,36 @@ function yilListesi(){
   yillar.sort().reverse();
   return yillar;
 }
-try{if(window.Android&&Android.loadData){var _d=Android.loadData();if(_d&&_d.length>2){try{V=JSON.parse(_d);}catch(pe){V={};}}}}catch(e){V={};}
+try{
+  if(window.Android&&Android.loadData){
+    var _d=Android.loadData();
+    if(_d&&_d.length>2){try{V=JSON.parse(_d);}catch(pe){V={};}}
+  } else {
+    var _ld=null;
+    try{_ld=localStorage.getItem('ciftci_veri');}catch(_e){}
+    if(_ld&&_ld.length>2){
+      try{V=JSON.parse(_ld);}catch(pe){V={};}
+    } else {
+      // localStorage boşsa IndexedDB'den yükle
+      try{
+        var _idbReq=indexedDB.open('CiftciDB',1);
+        _idbReq.onsuccess=function(e){
+          try{
+            var _gr=e.target.result.transaction('veri','readonly').objectStore('veri').get('main');
+            _gr.onsuccess=function(){
+              if(_gr.result&&_gr.result.json&&_gr.result.json.length>2){
+                try{V=JSON.parse(_gr.result.json);}catch(pe){}
+                // IDB'den gelince localStorage'a da yaz
+                try{localStorage.setItem('ciftci_veri',_gr.result.json);}catch(e){}
+                if(typeof R==='function')R();
+              }
+            };
+          }catch(e){}
+        };
+      }catch(e){}
+    }
+  }
+}catch(e){V={};}
 // Aktif yılın verisini ana alanlara yükle
 try{
   if(!V.arsiv)V.arsiv={};
@@ -162,7 +191,12 @@ function sv(){
     };
     V.arsiv[AKTIF_YIL]=guncelVeri;
     var json=JSON.stringify(V);
-    if(window.Android)Android.saveData(json);
+    if(window.Android){
+      Android.saveData(json);
+    } else {
+      try{localStorage.setItem('ciftci_veri',json);}catch(le){}
+      try{_idbSave(json);}catch(ie){}
+    }
   }catch(e){toast('Kayit hatasi!');}
 }
 function yilDegistir(yil){
@@ -2525,6 +2559,31 @@ if('serviceWorker' in navigator){
       .catch(function(e){ console.log('SW hata:', e); });
   });
 }
+
+// IndexedDB - PWA kalıcı depolama
+function _idbSave(json){
+  try{
+    var req=indexedDB.open('CiftciDB',1);
+    req.onupgradeneeded=function(e){e.target.result.createObjectStore('veri',{keyPath:'id'});};
+    req.onsuccess=function(e){
+      var tx=e.target.result.transaction('veri','readwrite');
+      tx.objectStore('veri').put({id:'main',json:json});
+    };
+  }catch(e){}
+}
+function _idbLoad(cb){
+  try{
+    var req=indexedDB.open('CiftciDB',1);
+    req.onupgradeneeded=function(e){e.target.result.createObjectStore('veri',{keyPath:'id'});};
+    req.onsuccess=function(e){
+      var gr=e.target.result.transaction('veri','readonly').objectStore('veri').get('main');
+      gr.onsuccess=function(){cb(gr.result?gr.result.json:null);};
+      gr.onerror=function(){cb(null);};
+    };
+    req.onerror=function(){cb(null);};
+  }catch(e){cb(null);}
+}
+
 </script>
 </body>
 </html>
