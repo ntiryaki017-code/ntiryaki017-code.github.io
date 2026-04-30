@@ -1599,8 +1599,31 @@ function iFotoSec(){
 }
 function fotoSec(cb){
   _fotoCB=cb;
-  if(window.Android&&Android.fotoSec){Android.fotoSec();}
-  else{toast('Foto secimi bu cihazda desteklenmiyor');}
+  if(window.Android&&Android.fotoSec){
+    Android.fotoSec();
+  } else {
+    // Web/PWA - gizli file input ile
+    var inp=document.getElementById('_fotoInput');
+    if(!inp){
+      inp=document.createElement('input');
+      inp.type='file';
+      inp.id='_fotoInput';
+      inp.accept='image/*';
+      inp.capture='environment'; // arka kamera
+      inp.style.display='none';
+      inp.onchange=function(){
+        if(!this.files||!this.files[0])return;
+        var reader=new FileReader();
+        reader.onload=function(e){
+          if(typeof _fotoCB==='function') _fotoCB(e.target.result);
+        };
+        reader.readAsDataURL(this.files[0]);
+      };
+      document.body.appendChild(inp);
+    }
+    inp.value='';
+    inp.click();
+  }
 }
 function kameraSec(cb){
   _fotoCB=cb;
