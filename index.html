@@ -924,7 +924,7 @@ function ilacSatiri(i,il){
     '<input class="fi" type="text" id="il'+i+'" value="'+v+'" autocomplete="off" placeholder="Etken madde adi..." style="font-size:14px;flex:1" oninput="this.readOnly=false" onclick="if(!this.value)ilacSecModal('+i+')">'+
     '<button type="button" onclick="ilacSecModal('+i+')" style="padding:0 14px;border-radius:8px;border:none;background:#27ae60;color:#fff;cursor:pointer;font-size:18px;flex-shrink:0">&#9660;</button>'+
     '<button type="button" onclick="etiketKaynakSec('+i+')" title="Etiketten Oku" style="padding:0 10px;border-radius:8px;border:none;background:#e67e22;color:#fff;cursor:pointer;font-size:15px;flex-shrink:0">&#128247;</button>'+
-    '<button type="button" onclick="ilacFotoEkle('+i+')" title="Fotograf Ekle" style="padding:0 10px;border-radius:8px;border:none;background:#8e44ad;color:#fff;cursor:pointer;font-size:15px;flex-shrink:0">&#128444;</button>'+
+    '<button type="button" ontouchend="ilacFotoEkle('+i+')" onclick="ilacFotoEkle('+i+')" title="Fotograf Ekle" style="padding:0 10px;border-radius:8px;border:none;background:#8e44ad;color:#fff;cursor:pointer;font-size:15px;flex-shrink:0">&#128444;</button>'+
     '</div>'+
     '<input class="fi" type="number" id="ild'+i+'" value="'+doz+'" placeholder="100 liye doz (ml)" style="font-size:13px;margin-top:4px" oninput="ilacDozHesap('+i+')" step="0.1">'+
     '<div id="ildr'+i+'" style="font-size:11px;color:#27ae60;font-weight:700;margin-top:3px"></div>'+
@@ -2463,17 +2463,25 @@ function ilacPlan(){
 
   var grup={};
   kayitlar.forEach(function(k){
-    // Toplam su ve genel doz (k.doz100 = 100lt başına ml)
-    var topSu=parseFloat(k.su||k.piyasaTotalKg||0);
+    var topSu=parseFloat(k.su||0);
+    // k.doz100 = kayıt düzeyinde 100lt'ye doz (ml)
     var genelD100=parseFloat(k.doz100||0);
+    // Toplam ilaç = topSu/100 * doz
+    var genelToplamMl=genelD100>0&&topSu>0?(topSu/100)*genelD100:0;
 
     if(k.ilaclar&&k.ilaclar.length){
+      var ilacSayisi=k.ilaclar.length;
       k.ilaclar.forEach(function(x){
-        var ad=x.ad||String(x);
+        var ad=(typeof x==='string')?x:(x.ad||'');
         if(!ad||ad==='undefined')return;
-        // Her etken maddenin kendi dozu veya genel doz
-        var d100=parseFloat(x.doz100||x.doz||genelD100||0);
-        var toplamMl=d100>0&&topSu>0?(topSu/100)*d100:0;
+        // Etken madde kendi dozuna sahipse onu kullan, yoksa genel dozu eşit böl
+        var xD100=parseFloat((typeof x==='object')?(x.doz100||x.doz||0):0);
+        var toplamMl=0;
+        if(xD100>0&&topSu>0){
+          toplamMl=(topSu/100)*xD100;
+        } else if(genelToplamMl>0){
+          toplamMl=genelToplamMl/ilacSayisi;
+        }
         if(!grup[ad])grup[ad]={ml:0,lt:0,kayit:0};
         grup[ad].ml+=toplamMl;
         grup[ad].lt+=topSu;
@@ -2481,10 +2489,8 @@ function ilacPlan(){
       });
     } else if(k.ilac){
       var ad=k.ilac;
-      var d100=parseFloat(k.doz100||genelD100||0);
-      var toplamMl=d100>0&&topSu>0?(topSu/100)*d100:0;
       if(!grup[ad])grup[ad]={ml:0,lt:0,kayit:0};
-      grup[ad].ml+=toplamMl;
+      grup[ad].ml+=genelToplamMl;
       grup[ad].lt+=topSu;
       grup[ad].kayit++;
     }
