@@ -1406,7 +1406,7 @@ function kI(){
 }
 
 // TARLA
-var MEYVELER=(function(){var _m=JSON.parse(localStorage.getItem('ozelMeyveler')||'[]');return ['elma','kiraz','seftali','kayisi','erik','armut','visne','ceviz','nar','incir','zeytin','badem','mandalina','portakal','limon','dut','kizilcik','musmula','ayva','ilik','buldur','sakiz','fidan'].concat(_m).concat(['diger']);})();
+var MEYVELER=(function(){var _m=JSON.parse(localStorage.getItem('ozelMeyveler')||'[]');return ['elma','kiraz','seftali','kayisi','nektarin','erik','armut','visne','ceviz','nar','incir','zeytin','badem','mandalina','portakal','limon','dut','kizilcik','musmula','ayva','ilik','buldur','sakiz','fidan'].concat(_m).concat(['diger']);})();
 function p5(){document.getElementById('sub').textContent='Tarlalarim';var tl=V.tarlalar||[];var rows=tl.map(function(t,i){var adet=t.meyve==='fidan'?'fidan':'agac';
 return '<div class="li" onclick="yT('+i+')"><div style="flex:1"><div class="mn">'+t.ad+'</div>'+
   '<div class="sb">'+(t.meyve||'')+' | '+(t.agacSayisi||0)+' '+adet+' | '+(t.donum||0)+' donum'+(t.not?' | '+t.not:'')+'</div>'+
