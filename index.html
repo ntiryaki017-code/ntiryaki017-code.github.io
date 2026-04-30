@@ -2456,28 +2456,31 @@ function ilacPlan(){
   var grup={};
   kayitlar.forEach(function(k){
     var topSu=parseFloat(k.su)||0;
-    var d100=parseFloat(k.doz100)||0;
-    // toplamMl: toplam kullanılan ilaç miktarı (ml/gr)
-    var toplamMl=(topSu>0&&d100>0)?(topSu/100*d100):0;
+    // k.doz100 kayıt düzeyinde genel doz
+    var genelD100=parseFloat(k.doz100)||0;
 
-    // İlaç adlarını bul
-    var adlar=[];
     if(k.ilaclar&&k.ilaclar.length){
       k.ilaclar.forEach(function(x){
         var ad=(typeof x==='string')?x:(x&&x.ad?x.ad:'');
-        if(ad&&adlar.indexOf(ad)<0)adlar.push(ad);
+        if(!ad)return;
+        // Önce etken maddenin kendi dozuna bak, yoksa genel dozu al
+        var xD100=parseFloat((typeof x==='object'&&x.doz100)?x.doz100:0)||genelD100;
+        var toplamMl=(topSu>0&&xD100>0)?(topSu/100*xD100):0;
+        if(!grup[ad])grup[ad]={ml:0,lt:0,kayit:0,eksik:0};
+        grup[ad].ml+=toplamMl;
+        grup[ad].lt+=topSu;
+        grup[ad].kayit++;
+        if(toplamMl===0)grup[ad].eksik++;
       });
-    }
-    if(!adlar.length&&k.ilac) adlar=[k.ilac];
-
-    adlar.forEach(function(ad){
-      if(!ad)return;
+    } else {
+      var ad=k.ilac||'Bilinmeyen';
+      var toplamMl=(topSu>0&&genelD100>0)?(topSu/100*genelD100):0;
       if(!grup[ad])grup[ad]={ml:0,lt:0,kayit:0,eksik:0};
       grup[ad].ml+=toplamMl;
       grup[ad].lt+=topSu;
       grup[ad].kayit++;
       if(toplamMl===0)grup[ad].eksik++;
-    });
+    }
   });
 
   var sirali=Object.keys(grup).sort(function(a,b){return grup[b].lt-grup[a].lt;});
