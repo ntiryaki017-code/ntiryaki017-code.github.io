@@ -924,11 +924,38 @@ function iGuncelleSonuc(){
   var dton=parseFloat(document.getElementById('i_dton').value)||0;
   var sonucDiv=document.getElementById('i_sonuc');
   if(!sonucDiv)return;
+
+  // Toplam su hesapla
+  var gercekTopSu=topSu||(donumSu>0&&donum>0?donumSu*donum:0);
+
+  // Toplam ilaç miktarı hesapla
+  // d100: ml/100lt su → toplamIlac = gercekTopSu/100 * d100 (ml)
+  // dton: ml/ton → toplamIlac = gercekTopSu * dton / 1000 (ml)
+  var toplamMl=0;
+  if(d100>0&&gercekTopSu>0) toplamMl=gercekTopSu/100*d100;
+  else if(dton>0&&gercekTopSu>0) toplamMl=gercekTopSu*dton/1000;
+
   var satirlar=[];
   if(donumSu>0)satirlar.push(donumSu.toFixed(0)+' lt/donum');
-  if(topSu>0)satirlar.push(topSu.toFixed(0)+' lt toplam');
+  if(gercekTopSu>0)satirlar.push(gercekTopSu.toFixed(0)+' lt toplam su');
   if(d100>0)satirlar.push(d100.toFixed(1)+' ml/100lt');
   if(dton>0)satirlar.push(dton.toFixed(1)+' ml/ton');
+
+  // Toplam ilaç göster
+  if(toplamMl>0){
+    // Birim dönüşümü
+  var birimEl=document.getElementById('i_d100birim');
+  var birim=birimEl?birimEl.value:'ml';
+  var toplamGr=birim==='kg'?toplamMl*1000:toplamMl; // kg→gr, ml ve gr aynı
+    var goster='';
+    if(toplamGr>=1000) goster=(toplamGr/1000).toFixed(2)+' kg';
+    else goster=toplamGr.toFixed(0)+' ml (gr)';
+    satirlar.push('→ TOPLAM ILAC: '+goster);
+    sonucDiv.style.background='#1e8449';
+  } else {
+    sonucDiv.style.background='#27ae60';
+  }
+
   sonucDiv.textContent=satirlar.length?satirlar.join(' | '):'';
 }
 function iHDS(){
