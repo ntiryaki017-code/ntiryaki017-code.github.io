@@ -2463,14 +2463,16 @@ function ilacPlan(){
 
   var grup={};
   kayitlar.forEach(function(k){
-    var ilaclar=[];
+    // Toplam su ve genel doz (k.doz100 = 100lt başına ml)
+    var topSu=parseFloat(k.su||k.piyasaTotalKg||0);
+    var genelD100=parseFloat(k.doz100||0);
+
     if(k.ilaclar&&k.ilaclar.length){
-      k.ilaclar.forEach(function(x,xi){
+      k.ilaclar.forEach(function(x){
         var ad=x.ad||String(x);
-        if(!ad)return;
-        // Doz bilgisi
-        var d100=parseFloat(x.doz100||x.doz||0);
-        var topSu=parseFloat(k.su||0);
+        if(!ad||ad==='undefined')return;
+        // Her etken maddenin kendi dozu veya genel doz
+        var d100=parseFloat(x.doz100||x.doz||genelD100||0);
         var toplamMl=d100>0&&topSu>0?(topSu/100)*d100:0;
         if(!grup[ad])grup[ad]={ml:0,lt:0,kayit:0};
         grup[ad].ml+=toplamMl;
@@ -2479,8 +2481,7 @@ function ilacPlan(){
       });
     } else if(k.ilac){
       var ad=k.ilac;
-      var d100=parseFloat(k.doz100||0);
-      var topSu=parseFloat(k.su||0);
+      var d100=parseFloat(k.doz100||genelD100||0);
       var toplamMl=d100>0&&topSu>0?(topSu/100)*d100:0;
       if(!grup[ad])grup[ad]={ml:0,lt:0,kayit:0};
       grup[ad].ml+=toplamMl;
