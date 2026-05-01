@@ -69,7 +69,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4f0;
 <div class="ov" id="ov2" style="z-index:60" onclick="if(event.target===this)CM2()"><div class="sh" id="sh2" style="height:80vh;display:flex;flex-direction:column"></div></div>
 <script>
 var V={};
-var PG=0,EI=-1,BIN_KEY='',BIN_ID='',OTOKAYT_API=false,_otoApiTimer=null;
+var PG=0,EI=-1,BIN_KEY='',BIN_ID='',OTOKAYT_API=false,_otoApiTimer=null,KASA_DARA=parseFloat(localStorage.getItem('kasaDara'))||0.4;AROMA_DARA=parseFloat(localStorage.getItem('aromaDara'))||0.4;
 var _ilacFiltreTarla='',_ilacFiltreIlac='';
 var _hasatFiltreTarla='',_hasatFiltreMeyve='';
 var AKTIF_YIL=new Date().getFullYear().toString();
@@ -238,7 +238,7 @@ function yeniYilKaydet(){
   if(!V.arsiv)V.arsiv={};
   V.arsiv[yil]={
     hasatKayitlari:[],giderler:[],
-    isci:{isciler:(V.isci&&V.isci.isciler)||[],devamlar:[],cavusOdemeleri:[],varsayilanYovmiye:(V.isci&&V.isci.varsayilanYovmiye)||500},
+    isci:{isciler:(V.isci&&V.isci.isciler)||[],devamlar:[],cavusOdemeleri:[],varsayilanYovmiye:(V.isci&&V.isci.varsayilanYovmiye)||2000},
     ilac:{kayitlar:[]},
     tarlalar:JSON.parse(JSON.stringify(V.tarlalar||[])),
     gubre:{kayitlar:[]},
@@ -270,7 +270,15 @@ function OM2(html){document.getElementById('sh2').innerHTML=html;document.getEle
 function CM2(){document.getElementById('ov2').classList.remove('open');}
 var _onayFn=null;
 function onay(fn){_onayFn=fn;OM('<h2 style="color:#e74c3c">Emin misiniz?</h2><p style="margin:14px 0;color:#555">Bu kayit silinecek.</p><button class="btn br" onclick="_onayFn&&_onayFn();_onayFn=null;CM()">Evet, Sil</button><button class="btn bk" onclick="CM()">Iptal</button>');}
-function getToplam(x){var pk=x.girisTipi==='kg'?(x.piyasaTotalKg||0):(x.piyasaKasa||0)*(x.piyasaKasaKg||0);var ak=x.girisTipi==='kg'?(x.aromaTotalKg||0):(x.aromaKasa||0)*(x.aromaKasaKg||0);return {pk:pk,ak:ak,gel:pk*(x.piyasaFiyat||0)+ak*(x.aromaFiyat||0)};}
+function getToplam(x){
+  var pk=x.piyasaTotalKg||((x.piyasaKasa||0)*(x.piyasaKasaKg||0));
+  var ak=x.aromaTotalKg||((x.aromaKasa||0)*(x.aromaKasaKg||0));
+  // Dara flag varsa düş
+  if(x.piyasaDarali&&(x.piyasaKasa||0)>0) pk=pk-((x.piyasaKasa||0)*KASA_DARA);
+  if(x.aromaDarali&&(x.aromaKasa||0)>0) ak=ak-((x.aromaKasa||0)*AROMA_DARA);
+  if(pk<0)pk=0; if(ak<0)ak=0;
+  return {pk:pk,ak:ak,gel:pk*(x.piyasaFiyat||0)+ak*(x.aromaFiyat||0)};
+}
 
 // OZET & ANALZ
 function p0(){try{
@@ -756,7 +764,25 @@ function hasatExcelFiltreli(){
   }catch(e){toast('Excel hatasi: '+e.message);}
 }
 var _hTip='kasa';
-function yH(idx){EI=idx===undefined?-1:idx;if(!(V.tarlalar&&V.tarlalar.length)){toast('Once Tarla ekleyin!');return;}var h=EI>=0?(V.hasatKayitlari||[])[EI]:{tarih:td(),girisTipi:'kasa'};_hTip=h.girisTipi||'kasa';window._hasatFoto='';var to=(V.tarlalar||[]).map(function(t,i){return '<option value="'+i+'"'+(h.tarlaIndex===i?' selected':'')+'>'+t.ad+'</option>';}).join('');var pKas=h.piyasaKasa||0,pKbk=h.piyasaKasaKg||0,pTot=h.piyasaTotalKg||0;var aKas=h.aromaKasa||0,aKbk=h.aromaKasaKg||0,aTot=h.aromaTotalKg||0;OM('<h2>'+(EI>=0?'Hasat Duzenle':'Yeni Hasat')+'</h2><div class="fr"><label>Tarla</label><select class="fi" id="f0">'+to+'</select></div><div class="fr"><label>Tarih</label><input class="fi" type="date" id="f1" value="'+(h.tarih||td())+'"></div><div class="fr"><label>Giris Tipi</label><div style="display:flex;gap:8px;margin-top:4px"><button type="button" id="tbK" class="tip-btn'+(_hTip==='kasa'?' on':'')+'" onclick="hTip(\'kasa\')">Kasa ile</button><button type="button" id="tbG" class="tip-btn'+(_hTip==='kg'?' on':'')+'" onclick="hTip(\'kg\')">Toplam KG</button></div></div><div id="kasaDiv" style="display:'+(_hTip==='kasa'?'block':'none')+'"><div class="ct" style="margin-top:8px">Piyasa</div><div class="fr2"><div class="fr"><label>Kasa Sayisi</label><input class="fi" type="number" id="f2" value="'+pKas+'" min="0" oninput="hs()"></div><div class="fr"><label>Kasa Basi KG</label><input class="fi" type="number" id="f3" value="'+pKbk+'" step="0.01" oninput="hs()"></div></div><div class="fr"><label>Toplam KG (girerseniz kasa basi hesaplanir)</label><input class="fi" type="number" id="f2t" value="'+pTot+'" step="0.1" oninput="hr(\'p\')"></div><div class="ozet-kart" id="pOzet">Kasa: '+pKas+' | Kasa Basi: '+pKbk+' kg | Toplam: '+pTot+' kg</div><div class="ct" style="margin-top:12px">Aroma</div><div class="fr2"><div class="fr"><label>Kasa Sayisi</label><input class="fi" type="number" id="f5" value="'+aKas+'" min="0" oninput="hs()"></div><div class="fr"><label>Kasa Basi KG</label><input class="fi" type="number" id="f6" value="'+aKbk+'" step="0.01" oninput="hs()"></div></div><div class="fr"><label>Toplam KG (girerseniz kasa basi hesaplanir)</label><input class="fi" type="number" id="f5t" value="'+aTot+'" step="0.1" oninput="hr(\'a\')"></div><div class="ozet-kart" id="aOzet">Kasa: '+aKas+' | Kasa Basi: '+aKbk+' kg | Toplam: '+aTot+' kg</div></div><div id="kgDiv" style="display:'+(_hTip==='kg'?'block':'none')+'"><div class="fr"><label>Piyasa Toplam KG</label><input class="fi" type="number" id="f2b" value="'+(h.piyasaTotalKg||0)+'" min="0" step="0.1"></div><div class="fr"><label>Aroma Toplam KG</label><input class="fi" type="number" id="f5b" value="'+(h.aromaTotalKg||0)+'" min="0" step="0.1"></div></div><div class="fr"><label>Piyasa Fiyat TL/kg</label><input class="fi" type="number" id="f4" value="'+(h.piyasaFiyat||0)+'" step="0.01"></div><div class="fr"><label>Aroma Fiyat TL/kg</label><input class="fi" type="number" id="f7" value="'+(h.aromaFiyat||0)+'" step="0.01"></div><div class="fr"><label>Not</label><input class="fi" type="text" id="f8" value="'+(h.not||'')+'"></div>'+
+function yH(idx){EI=idx===undefined?-1:idx;if(!(V.tarlalar&&V.tarlalar.length)){toast('Once Tarla ekleyin!');return;}var h=EI>=0?(V.hasatKayitlari||[])[EI]:{tarih:td(),girisTipi:'kasa'};_hTip=h.girisTipi||'kasa';window._hasatFoto='';var to=(V.tarlalar||[]).map(function(t,i){return '<option value="'+i+'"'+(h.tarlaIndex===i?' selected':'')+'>'+t.ad+'</option>';}).join('');var pKas=h.piyasaKasa||0,pKbk=h.piyasaKasaKg||0,pTot=h.piyasaTotalKg||0;var aKas=h.aromaKasa||0,aKbk=h.aromaKasaKg||0,aTot=h.aromaTotalKg||0;setTimeout(function(){
+    var po=document.getElementById('pOzet');
+    if(po&&!document.getElementById('pDarali')){
+      var wrap=document.createElement('div');
+      wrap.innerHTML='<label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer"><input type="checkbox" id="pDarali" style="width:18px;height:18px;accent-color:#27ae60" onchange="hs()"><span style="font-size:13px">Darali (kasa basi '+KASA_DARA+' kg dusulur)</span></label><div class="ozet-kart" id="pNetOzet" style="display:none;background:#e8f8f0"></div>';
+      po.parentNode.insertBefore(wrap, po.nextSibling);
+      var di=document.getElementById('pDarali');
+      if(di&&h.piyasaDarali) di.checked=true;
+    }
+    var ao=document.getElementById('aOzet');
+    if(ao&&!document.getElementById('aDarali')){
+      var awrap=document.createElement('div');
+      awrap.innerHTML='<label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer"><input type="checkbox" id="aDarali" style="width:18px;height:18px;accent-color:#8e44ad" onchange="hs()"><span style="font-size:13px">Darali (kasa basi '+AROMA_DARA+' kg dusulur)</span></label><div class="ozet-kart" id="aNetOzet" style="display:none;background:#f5eef8"></div>';
+      ao.parentNode.insertBefore(awrap, ao.nextSibling);
+      var adi=document.getElementById('aDarali');
+      if(adi&&h.aromaDarali) adi.checked=true;
+    }
+  },150);
+  OM('<h2>'+(EI>=0?'Hasat Duzenle':'Yeni Hasat')+'</h2><div class="fr"><label>Tarla</label><select class="fi" id="f0">'+to+'</select></div><div class="fr"><label>Tarih</label><input class="fi" type="date" id="f1" value="'+(h.tarih||td())+'"></div><div class="fr"><label>Giris Tipi</label><div style="display:flex;gap:8px;margin-top:4px"><button type="button" id="tbK" class="tip-btn'+(_hTip==='kasa'?' on':'')+'" onclick="hTip(\'kasa\')">Kasa ile</button><button type="button" id="tbG" class="tip-btn'+(_hTip==='kg'?' on':'')+'" onclick="hTip(\'kg\')">Toplam KG</button></div></div><div id="kasaDiv" style="display:'+(_hTip==='kasa'?'block':'none')+'"><div class="ct" style="margin-top:8px">Piyasa</div><div class="fr2"><div class="fr"><label>Kasa Sayisi</label><input class="fi" type="number" id="f2" value="'+pKas+'" min="0" oninput="hs()"></div><div class="fr"><label>Kasa Basi KG</label><input class="fi" type="number" id="f3" value="'+pKbk+'" step="0.01" oninput="hs()"></div></div><div class="fr"><label>Toplam KG (girerseniz kasa basi hesaplanir)</label><input class="fi" type="number" id="f2t" value="'+pTot+'" step="0.1" oninput="hr(\'p\')"></div><div class="ozet-kart" id="pOzet">Kasa: '+pKas+' | Kasa Basi: '+pKbk+' kg | Toplam: '+pTot+' kg</div><div class="ct" style="margin-top:12px">Aroma</div><div class="fr2"><div class="fr"><label>Kasa Sayisi</label><input class="fi" type="number" id="f5" value="'+aKas+'" min="0" oninput="hs()"></div><div class="fr"><label>Kasa Basi KG</label><input class="fi" type="number" id="f6" value="'+aKbk+'" step="0.01" oninput="hs()"></div></div><div class="fr"><label>Toplam KG (girerseniz kasa basi hesaplanir)</label><input class="fi" type="number" id="f5t" value="'+aTot+'" step="0.1" oninput="hr(\'a\')"></div><div class="ozet-kart" id="aOzet">Kasa: '+aKas+' | Kasa Basi: '+aKbk+' kg | Toplam: '+aTot+' kg</div></div><div id="kgDiv" style="display:'+(_hTip==='kg'?'block':'none')+'"><div class="fr"><label>Piyasa Toplam KG</label><input class="fi" type="number" id="f2b" value="'+(h.piyasaTotalKg||0)+'" min="0" step="0.1"></div><div class="fr"><label>Aroma Toplam KG</label><input class="fi" type="number" id="f5b" value="'+(h.aromaTotalKg||0)+'" min="0" step="0.1"></div></div><div class="fr"><label>Piyasa Fiyat TL/kg</label><input class="fi" type="number" id="f4" value="'+(h.piyasaFiyat||0)+'" step="0.01"></div><div class="fr"><label>Aroma Fiyat TL/kg</label><input class="fi" type="number" id="f7" value="'+(h.aromaFiyat||0)+'" step="0.01"></div><div class="fr"><label>Not</label><input class="fi" type="text" id="f8" value="'+(h.not||'')+'"></div>'+
 '<div class="fr"><label>Fotograf</label>'+
 '<div id="h_foto_prev" style="margin-bottom:8px">'+(h.foto?'<img src="'+h.foto+'" style="width:100%;border-radius:10px;max-height:200px;object-fit:cover">':'')+
 '</div>'+
@@ -773,10 +799,41 @@ function hFotoSec(){
   });
 }
 function hTip(t){_hTip=t;document.getElementById('kasaDiv').style.display=t==='kasa'?'block':'none';document.getElementById('kgDiv').style.display=t==='kg'?'block':'none';document.getElementById('tbK').className='tip-btn'+(t==='kasa'?' on':'');document.getElementById('tbG').className='tip-btn'+(t==='kg'?' on':'');}
-function hs(){var pKas=+gv('f2')||0,pKbk=+gv('f3')||0;var aKas=+gv('f5')||0,aKbk=+gv('f6')||0;var pTot=pKas&&pKbk?(pKas*pKbk):+gv('f2t')||0;var aTot=aKas&&aKbk?(aKas*aKbk):+gv('f5t')||0;if(pKas&&pKbk){var e=document.getElementById('f2t');if(e)e.value=pTot.toFixed(1);}if(aKas&&aKbk){var e2=document.getElementById('f5t');if(e2)e2.value=aTot.toFixed(1);}var ep=document.getElementById('pOzet');if(ep)ep.textContent='Kasa: '+pKas+' | Kasa Basi: '+pKbk+' kg | Toplam: '+pTot.toFixed(1)+' kg';var ea=document.getElementById('aOzet');if(ea)ea.textContent='Kasa: '+aKas+' | Kasa Basi: '+aKbk+' kg | Toplam: '+aTot.toFixed(1)+' kg';}
+function hs(){var pKas=+gv('f2')||0,pKbk=+gv('f3')||0;var aKas=+gv('f5')||0,aKbk=+gv('f6')||0;var pTot=pKas&&pKbk?(pKas*pKbk):+gv('f2t')||0;var aTot=aKas&&aKbk?(aKas*aKbk):+gv('f5t')||0;if(pKas&&pKbk){var e=document.getElementById('f2t');if(e)e.value=pTot.toFixed(1);}if(aKas&&aKbk){var e2=document.getElementById('f5t');if(e2)e2.value=aTot.toFixed(1);}var ep=document.getElementById('pOzet');if(ep)ep.textContent='Kasa: '+pKas+' | Kasa Basi: '+pKbk+' kg | Toplam: '+pTot.toFixed(1)+' kg';var ea=document.getElementById('aOzet');if(ea)ea.textContent='Kasa: '+aKas+' | Kasa Basi: '+aKbk+' kg | Toplam: '+aTot.toFixed(1)+' kg';
+  // Net kg - daralı
+  var _de=document.getElementById('pDarali');
+  var _ne=document.getElementById('pNetOzet');
+  if(_de&&_ne){
+    var _pk=parseFloat(document.getElementById('f2').value)||0;
+    var _pt=parseFloat(document.getElementById('f2t').value)||(_pk*(parseFloat(document.getElementById('f3').value)||0));
+    if(_de.checked&&_pk>0&&_pt>0){
+      _ne.style.display='block';
+      _ne.textContent='Net KG: '+(_pt-_pk*KASA_DARA).toFixed(2)+' kg ('+_pk+' kasa x '+KASA_DARA+'kg dara)';
+    } else { _ne.style.display='none'; }
+  }
+  var _ade=document.getElementById('aDarali');
+  var _ane=document.getElementById('aNetOzet');
+  if(_ade&&_ane){
+    var _ak=parseFloat(document.getElementById('f5').value)||0;
+    var _at=parseFloat(document.getElementById('f5t').value)||(_ak*(parseFloat(document.getElementById('f6').value)||0));
+    if(_ade.checked&&_ak>0&&_at>0){
+      _ane.style.display='block';
+      _ane.textContent='Net KG: '+(_at-_ak*AROMA_DARA).toFixed(2)+' kg ('+_ak+' kasa x '+AROMA_DARA+'kg dara)';
+    } else { _ane.style.display='none'; }
+  }
+}
 function hr(tip){if(tip==='p'){var k=+gv('f2')||0,top=+gv('f2t')||0;if(k&&top){var e=document.getElementById('f3');if(e)e.value=(top/k).toFixed(2);}var ep=document.getElementById('pOzet');if(ep)ep.textContent='Kasa: '+k+' | Kasa Basi: '+gv('f3')+' kg | Toplam: '+top.toFixed(1)+' kg';}else{var k2=+gv('f5')||0,top2=+gv('f5t')||0;if(k2&&top2){var e2=document.getElementById('f6');if(e2)e2.value=(top2/k2).toFixed(2);}var ea=document.getElementById('aOzet');if(ea)ea.textContent='Kasa: '+k2+' | Kasa Basi: '+gv('f6')+' kg | Toplam: '+top2.toFixed(1)+' kg';}}
-function kH(){var pk=_hTip==='kasa'?(+gv('f2t')||((+gv('f2'))*(+gv('f3')))):(+gv('f2b'));var ak=_hTip==='kasa'?(+gv('f5t')||((+gv('f5'))*(+gv('f6')))):(+gv('f5b'));var _mevcutHFoto=EI>=0?((V.hasatKayitlari||[])[EI]||{}).foto||'':'';
-var hx={tarlaIndex:+gv('f0'),tarih:gv('f1'),girisTipi:_hTip,piyasaKasa:+gv('f2'),piyasaKasaKg:+gv('f3'),piyasaTotalKg:pk,piyasaFiyat:+gv('f4'),aromaKasa:+gv('f5'),aromaKasaKg:+gv('f6'),aromaTotalKg:ak,aromaFiyat:+gv('f7'),not:gv('f8'),foto:window._hasatFoto||_mevcutHFoto};if(!V.hasatKayitlari)V.hasatKayitlari=[];if(EI>=0)V.hasatKayitlari[EI]=hx;else V.hasatKayitlari.push(hx);sv();CM();R();}
+function kH(){
+  var pk=_hTip==='kasa'?(+gv('f2t')||((+gv('f2'))*(+gv('f3')))):(+gv('f2b'));
+  var ak=_hTip==='kasa'?(+gv('f5t')||((+gv('f5'))*(+gv('f6')))):(+gv('f5b'));
+  var _darEl=document.getElementById('pDarali');
+  var _pks=+gv('f2')||0;
+  var _pDarali=_darEl&&_darEl.checked&&_pks>0;
+  // Dara flag'i kaydet - pk/ak orijinal kalır, hesaplama sırasında düşülür
+  var _aDarEl=document.getElementById('aDarali');
+  var _aks=+gv('f5')||0;
+  var _aDarali=_aDarEl&&_aDarEl.checked&&_aks>0;var _mevcutHFoto=EI>=0?((V.hasatKayitlari||[])[EI]||{}).foto||'':'';
+var hx={tarlaIndex:+gv('f0'),tarih:gv('f1'),girisTipi:_hTip,piyasaKasa:+gv('f2'),piyasaKasaKg:+gv('f3'),piyasaTotalKg:pk,piyasaDarali:!!(_darEl&&_darEl.checked),aromaDarali:!!(_aDarEl&&_aDarEl.checked),piyasaFiyat:+gv('f4'),aromaKasa:+gv('f5'),aromaKasaKg:+gv('f6'),aromaTotalKg:ak,aromaFiyat:+gv('f7'),not:gv('f8'),foto:window._hasatFoto||_mevcutHFoto};if(!V.hasatKayitlari)V.hasatKayitlari=[];if(EI>=0)V.hasatKayitlari[EI]=hx;else V.hasatKayitlari.push(hx);sv();CM();R();}
 
 // GIDER
 var KAT=['Tohum/Fide','Gubre','Ilac/Zirai','Makine/Yakit','Isci Ucreti','Su/Sulama','Nakliye','Kira','Sigorta','Vergi','Diger'];
@@ -1392,13 +1449,13 @@ function kI(){
       // Su dönüm oranına göre dağıt
       var topSuTarla=0;
       if(donSu>0&&dn>0){
-        topSuTarla=donSu*dn; // dönüme su x bu tarlanın dönümü
+        topSuTarla=donSu*dn;
       } else if(topSu>0&&topTumDonum>0&&dn>0){
-        topSuTarla=parseFloat((topSu*dn/topTumDonum).toFixed(0)); // oransal dağıt
+        topSuTarla=topSu*dn/topTumDonum;
       } else {
         topSuTarla=topSu;
       }
-      var k={id:uid(),groupId:gid,tarih:gv('i0'),tarlalar:[tarlaAd],tarla:tarlaAd,meyveTuru:tarlaObj?tarlaObj.meyve||'':'',ilaclar:il,not:gv('i4'),su:topSuTarla,donumSu:donSu,doz100:d100,dozTon:dton,foto:window._ilacFoto||_mevcutFoto};
+      var k={id:uid(),groupId:gid,tarih:gv('i0'),tarlalar:[tarlaAd],tarla:tarlaAd,meyveTuru:tarlaObj?tarlaObj.meyve||'':'',ilaclar:il,not:gv('i4'),su:topSuTarla,suGirilen:Math.round(topSu/seciliTarlalar.length),donumSu:donSu,doz100:d100,dozTon:dton,foto:window._ilacFoto||_mevcutFoto};
       V.ilac.kayitlar.push(k);
     });
   }
@@ -1481,7 +1538,7 @@ function yGB(idx){
   }).join('');
   OM('<h2>'+(EI>=0?'Kayit Duzenle':'Yeni Gubre Kaydi')+'</h2>'+
     '<div class="fr"><label>Tarih</label><input class="fi" type="date" id="gb_tarih" value="'+(k.tarih||td())+'"></div>'+
-    '<div class="fr"><label>Tarla</label><select class="fi" id="gb_tarla" onchange="gbHD()">'+to+'</select></div>'+
+    '<div class="fr"><label>Tarlalar</label>'+gbTarlaCheckbox(k)+'</div>'+
     '<div class="fr"><label>Gubre</label><select class="fi" id="gb_gubre">'+go+'</select></div>'+
     '<div class="fr2">'+
       '<div class="fr"><label>Donume (kg)</label><input class="fi" type="number" id="gb_donum" value="'+(k.donumMiktar||'')+'" placeholder="kg/donum" oninput="gbHD()"></div>'+
@@ -1494,10 +1551,10 @@ function yGB(idx){
 }
 
 function kGB(){
-  var tarih=gv('gb_tarih');var tarla=gv('gb_tarla');var gubre=gv('gb_gubre');
+  var tarih=gv('gb_tarih');var tarlalar=gbSeciliTarlalar();var tarla=tarlalar[0]||'';var gubre=gv('gb_gubre');
   var donum=parseFloat(gv('gb_donum'))||0;var toplam=parseFloat(gv('gb_toplam'))||0;
   var not=gv('gb_not');
-  if(!tarla){toast('Tarla secin!');return;}
+  if(!tarlalar.length){toast('En az bir tarla secin!');return;}
   if(!gubre){toast('Gübre secin!');return;}
   if(!donum&&!toplam){toast('Miktar girin!');return;}
   // Boş olan hesapla
@@ -1511,7 +1568,7 @@ function kGB(){
   }
   if(!V.gubre)V.gubre={kayitlar:[]};
   if(!V.gubre.kayitlar)V.gubre.kayitlar=[];
-  var kayit={tarih:tarih,tarla:tarla,gubreAdi:gubre,donumMiktar:donum,toplamMiktar:toplam,not:not};
+  var kayit={tarih:tarih,tarla:tarla,tarlalar:tarlalar,gubreAdi:gubre,donumMiktar:donum,toplamMiktar:toplam,not:not};
   if(EI>=0)V.gubre.kayitlar[EI]=kayit;
   else V.gubre.kayitlar.push(kayit);
   sv();CM();R();
@@ -1579,7 +1636,7 @@ function p6(){
 
     // ── Diğer
     +'<div class="card"><div class="ct">Diger</div>'
-    +'<button class="btn b2" onclick="ozelUrunYonet()" style="margin-bottom:8px">Ozel Urunleri Duzenle</button>'+'<button class="btn b2" onclick="yovmiyeAyarla()" style="margin-bottom:8px">Varsayilan Yovmiye</button>'
+    +'<button class="btn b2" onclick="ozelUrunYonet()" style="margin-bottom:8px">Ozel Urunleri Duzenle</button>'+'<button class="btn b2" onclick="kasaDaraAyarla()" style="margin-bottom:8px">Piyasa Dara ('+KASA_DARA+'kg)</button>'+'<button class="btn b2" onclick="aromaDaraAyarla()" style="margin-bottom:8px">Aroma Dara ('+AROMA_DARA+'kg)</button>'+'<button class="btn b2" onclick="yovmiyeAyarla()" style="margin-bottom:8px">Varsayilan Yovmiye</button>'
     +'<button class="btn br" onclick="buYiliSil()">Bu Yilin Kayitlarini Sil</button>'
     +'</div>'
 
@@ -1700,7 +1757,7 @@ function buYiliSil(){
     sv();R();toast(AKTIF_YIL+' kayitlari silindi');
   });
 }
-function yovmiyeAyarla(){var mv=(V.isci&&V.isci.varsayilanYovmiye)||500;OM('<h2>Varsayilan Yovmiye</h2><div class="fr"><label>Gunluk Ucret (TL)</label><input class="fi" type="number" id="ay0" value="'+mv+'"></div><button class="btn bg" onclick="var v=+gv(\'ay0\');if(!v){toast(\'Tutar girin\');return;}if(!V.isci)V.isci={};V.isci.varsayilanYovmiye=v;sv();CM();toast(\'Yovmiye: TL \'+v)">Kaydet</button><button class="btn bk" onclick="CM()">Iptal</button>');}
+function yovmiyeAyarla(){var mv=(V.isci&&V.isci.varsayilanYovmiye)||2000;OM('<h2>Varsayilan Yovmiye</h2><div class="fr"><label>Gunluk Ucret (TL)</label><input class="fi" type="number" id="ay0" value="'+mv+'"></div><button class="btn bg" onclick="var v=+gv(\'ay0\');if(!v){toast(\'Tutar girin\');return;}if(!V.isci)V.isci={};V.isci.varsayilanYovmiye=v;sv();CM();toast(\'Yovmiye: TL \'+v)">Kaydet</button><button class="btn bk" onclick="CM()">Iptal</button>');}
 function bulutKopyala(){
   try{
     var ta=document.createElement('textarea');
@@ -2129,7 +2186,7 @@ function p8() {
   function hes(hs,gs){
     return {
       kg:hs.reduce(function(s,x){return s+(parseFloat(x.kg)||0);},0),
-      gelir:hs.reduce(function(s,x){return s+(parseFloat(x.tutar)||0);},0),
+      gelir:hs.reduce(function(s,x){var t=getToplam(x);return s+t.gel;},0),
       gid:gs.reduce(function(s,x){return s+(parseFloat(x.tutar)||0);},0)
     };
   }
@@ -2452,9 +2509,11 @@ function kITekSil(ri){
 function ilacPlan(){
   // Sadece aktif yılın kayıtları - çift sayım önle
   var kayitlar=(V.ilac&&V.ilac.kayitlar)||[];
-  var g={};kayitlar.forEach(function(k){
+  var g={};
+  kayitlar.forEach(function(k){
     if(!k)return;
-    var su=parseInt(k.su)||0;
+    // suGirilen: kullanıcının girdiği orijinal su - yoksa k.su
+    var su=Math.round(parseFloat(k.suGirilen||k.su)||0);
     var il=k.ilaclar&&k.ilaclar.length?k.ilaclar:(k.ilac?[{ad:k.ilac,doz100:parseFloat(k.doz100)||0}]:[]);
     il.forEach(function(x){
       var ad=typeof x==='string'?x:(x&&x.ad?x.ad:'');
@@ -2599,6 +2658,49 @@ function telefonYedekYukle(){
     reader.readAsText(this.files[0]);
   };
   inp.click();
+}
+
+
+function kasaDaraAyarla(){
+  var v=prompt('Piyasa kasa basi dara (kg), ornek: 0.4 = 400gr:',KASA_DARA);
+  if(v===null)return;
+  var n=parseFloat(v);
+  if(!n||n<=0){toast('Gecersiz!');return;}
+  KASA_DARA=n;
+  try{localStorage.setItem('kasaDara',''+n);}catch(e){}
+  toast('Piyasa kasa darasi '+n+' kg kaydedildi');
+  p6();
+}
+function aromaDaraAyarla(){
+  var v=prompt('Aroma kasa basi dara (kg), ornek: 0.3 = 300gr:',AROMA_DARA);
+  if(v===null)return;
+  var n=parseFloat(v);
+  if(!n||n<=0){toast('Gecersiz!');return;}
+  AROMA_DARA=n;
+  try{localStorage.setItem('aromaDara',''+n);}catch(e){}
+  toast('Aroma kasa darasi '+n+' kg kaydedildi');
+  p6();
+}
+
+
+function gbTarlaCheckbox(k){
+  var sec=k.tarlalar||( k.tarla?[k.tarla]:[]);
+  return '<div id="gbTarlaDiv" style="background:#f8f9fa;border-radius:8px;padding:8px;max-height:150px;overflow-y:auto">'+
+    (V.tarlalar||[]).map(function(t){
+      var checked=sec.indexOf(t.ad)>=0;
+      return '<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">'+
+        '<input type="checkbox" value="'+t.ad+'" '+(checked?'checked':'')+' style="width:16px;height:16px;accent-color:#27ae60">'+
+        '<span style="font-size:13px">'+t.ad+' <span style="color:#888;font-size:11px">('+( t.donum||0)+' dönüm)</span></span>'+
+        '</label>';
+    }).join('')+
+  '</div>';
+}
+
+function gbSeciliTarlalar(){
+  var cbx=document.querySelectorAll('#gbTarlaDiv input[type=checkbox]:checked');
+  var list=[];
+  cbx.forEach(function(c){list.push(c.value);});
+  return list;
 }
 
 </script>
