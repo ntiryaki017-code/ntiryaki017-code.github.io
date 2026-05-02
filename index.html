@@ -1602,6 +1602,7 @@ function kT(){var ad=gv('t0').trim();if(!ad){toast('Tarla adi girin');return;}va
 // AYARLAR
 // ── GÜBRE SAYFASI ──────────────────────────────────────────────────────────
 var GUBRELER=['20-20-0','15-15-15','0-0-60 (Potasyum Klorür)','Üre (46-0-0)','CAN (26-0-0)','DAP (18-46-0)','MAP (12-61-0)','Amonyum Sülfat (21-0-0)','Potasyum Nitrat','Kalsiyum Nitrat','Magnezyum Sülfat','Bor','Çinko Sülfat','Demir EDTA','Mangan Sülfat','Humik Asit','Fosfat','Triple Süper Fosfat','Mono Amonyum Fosfat','Di Amonyum Fosfat','NPK 10-10-10','NPK 12-12-17','NPK 20-10-10','Sıvı Gübre','Yaprak Gübresi','Organik Gübre','Ahır Gübresi','Kompost','__diger__'];
+try{var _og=JSON.parse(localStorage.getItem('ozelGubreler')||'[]');_og.forEach(function(x){if(GUBRELER.indexOf(x)<0)GUBRELER.splice(GUBRELER.indexOf('__diger__'),0,x);});}catch(e){}
 
 function p7(){
   document.getElementById('sub').textContent='Gübreleme';
@@ -1647,8 +1648,8 @@ function yGB(idx){
   OM('<h2>'+(EI>=0?'Kayit Duzenle':'Yeni Gubre Kaydi')+'</h2>'+
     '<div class="fr"><label>Tarih</label><input class="fi" type="date" id="gb_tarih" value="'+(k.tarih||td())+'"></div>'+
     '<div class="fr"><label>Tarlalar</label>'+gbTarlaCheckbox(k)+'</div>'+
-    '<select class="fi" id="gb_gubre" onchange="var oe=document.getElementById(\'gb_gubreOzel\');if(oe)oe.style.display=this.value===\'diger\'?\'block\':\'none\'">'+go+'</select>'+
-    '<select class="fi" id="gb_gubre" onchange="var oe=document.getElementById(\'gb_gubreOzel\');if(oe)oe.style.display=this.value===\'diger\'?\'block\':\'none\'">'+go+'</select>'+
+    '<div class="fr"><label>Gubre</label>'+
+    '<select class="fi" id="gb_gubre" onchange="var oe=document.getElementById(\'gb_gubreOzel\');if(oe)oe.style.display=this.value===\'__diger__\'?\'block\':\'none\'">'+go+'</select>'+
     '<input class="fi" type="text" id="gb_gubreOzel" placeholder="Gubre adi girin" style="margin-top:6px;display:none">'+
     '</div>'+
     '<div class="fr2">'+
