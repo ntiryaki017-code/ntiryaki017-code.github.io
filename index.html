@@ -69,7 +69,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4f0;
 <div class="ov" id="ov2" style="z-index:60" onclick="if(event.target===this)CM2()"><div class="sh" id="sh2" style="height:80vh;display:flex;flex-direction:column"></div></div>
 <script>
 var V={};
-var PG=0,EI=-1,BIN_KEY='',BIN_ID='',OTOKAYT_API=false,_otoApiTimer=null,KASA_DARA=parseFloat(localStorage.getItem('kasaDara'))||0.4;AROMA_DARA=parseFloat(localStorage.getItem('aromaDara'))||3;
+var PG=0,EI=-1,BIN_KEY='',BIN_ID='',DRIVE_URL='',OTOKAYT_API=false,OTOKAYT_DRIVE=false,_otoApiTimer=null,_otoDriveTimer=null,KASA_DARA=parseFloat(localStorage.getItem('kasaDara'))||0.4;AROMA_DARA=parseFloat(localStorage.getItem('aromaDara'))||3;
 var _ilacFiltreTarla='',_ilacFiltreIlac='';
 var _hasatFiltreTarla='',_hasatFiltreMeyve='';
 var AKTIF_YIL=new Date().getFullYear().toString();
@@ -131,8 +131,10 @@ try{if(V.bulutAyar){
   BIN_KEY=V.bulutAyar.apiKey||'';
   BIN_ID=V.bulutAyar.binId||'';
   SHEETS_URL=V.bulutAyar.sheetsUrl||'';
+  DRIVE_URL=V.bulutAyar.driveUrl||'';
   OTOKAYT=V.bulutAyar.otoKayt===true;
   OTOKAYT_API=V.bulutAyar.otoKaytApi===true;
+  OTOKAYT_DRIVE=V.bulutAyar.otoDrive===true;
 }}catch(e){}
 // Açılışta API key/Bin ID'yi Android'den al (koda gömülü)
 try{if(window.Android&&Android.getApiKey){var _ak=Android.getApiKey();var _bi=Android.getBinId();if(_ak)BIN_KEY=_ak;if(_bi)BIN_ID=_bi;}}catch(e){}
@@ -1869,6 +1871,24 @@ function p6(){
     +toggleRow('otoKaytSwitch','Otomatik API Kayit','Her degisiklikte JSONBine kaydet','api')
     +'</div>'
 
+    +'<div class="card"><div class="ct">&#128196; Google Drive Yedek</div>'
+    +'<button onclick="driveBilgiGoster()" style="width:100%;padding:10px;border-radius:10px;border:2px solid #27ae60;background:#e8f8f0;color:#27ae60;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">&#128214; Beni Oku — Google Drive Nasil Kurulur?</button>'
+    +(DRIVE_URL
+      ?'<div style="background:#e8f8f0;border-radius:8px;padding:8px 12px;margin-bottom:10px">'
+        +'<div style="font-size:11px;color:#888;margin-bottom:2px">Script URL Kayitli</div>'
+        +'<div style="font-size:11px;font-weight:700;color:#1e8449;word-break:break-all">'+DRIVE_URL.substring(0,55)+'...</div>'
+        +'</div>'
+      :'<div style="background:#fff3cd;border-radius:8px;padding:12px;margin-bottom:10px">'
+        +'<div style="font-size:13px;font-weight:700;color:#856404;margin-bottom:4px">Drive kurulumu yapilmadi</div>'
+        +'<div style="font-size:12px;color:#856404">Script URL girerek Drive\'a yedekleme yapabilirsiniz.</div>'
+        +'</div>')
+    +'<div id="driveDurumKart" style="border-radius:10px;padding:11px 14px;margin-bottom:8px;background:#f5f5f5"><div style="font-size:11px;color:#999;margin-bottom:4px">Google Drive Kayit Durumu</div><div id="driveDurumMetin" style="font-size:14px;font-weight:700;color:#888">&#9679; Bilinmiyor</div><div id="driveDurumZaman" style="font-size:10px;color:#bbb;margin-top:3px"></div></div>'
+    +'<button class="btn bg" onclick="driveKaydet()" style="margin-bottom:8px">&#128196; Drive\'a Kaydet</button>'
+    +'<button class="btn b2" onclick="driveGetir()" style="margin-bottom:8px">&#128196; Drive\'dan Yukle</button>'
+    +'<button class="btn b4" onclick="driveAyarla()" style="margin-bottom:8px">&#9881; Drive Ayarlari</button>'
+    +toggleRow('otoDriveSwitchKart','Otomatik Drive Kayit','Her degisiklikte Drive\'a kaydet','drive')
+    +'</div>'
+
     // ── Yıl Arşivi
     +'<div class="card"><div class="ct">Yil Arsivi</div>'
     +'<div style="font-size:12px;color:#888;margin-bottom:10px">Aktif yil: <b>'+AKTIF_YIL+'</b></div>'
@@ -2050,6 +2070,104 @@ function bulutBilgiGoster(){
     '<b>Telefona JSON Yedek</b> özelliği ile verilerinizi telefon hafızasına da kaydedebilirsiniz. Bu, internet olmadan çalışan bir yedek yöntemidir.'+
     '</div>'+
 
+    '</div>'+
+    '<button class="btn bg" onclick="CM()" style="margin-top:12px">Anladım, Kapat</button>');
+}
+function _driveSyncGoster(durum,mesaj){
+  var kart=document.getElementById('driveDurumKart');
+  var metin=document.getElementById('driveDurumMetin');
+  var zaman=document.getElementById('driveDurumZaman');
+  var renk,kartBg,ikon;
+  if(durum==='ok'){ikon='✓';renk='#27ae60';kartBg='#e8f5e9';}
+  else if(durum==='hata'){ikon='✗';renk='#e74c3c';kartBg='#fdecea';}
+  else if(durum==='bekle'){ikon='…';renk='#e67e22';kartBg='#fff8e1';}
+  else{ikon='●';renk='#aaa';kartBg='#f5f5f5';}
+  var now=new Date();
+  var saat=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  if(kart)kart.style.background=kartBg;
+  if(metin){metin.style.color=renk;metin.textContent=ikon+' '+(mesaj||'Bilinmiyor');}
+  if(zaman&&durum!=='bekle')zaman.textContent='Son: '+saat;
+}
+function driveKaydet(){
+  if(!DRIVE_URL){toast('Once Drive Ayarlarindan Script URL girin!');driveAyarla();return;}
+  _driveSyncGoster('bekle','Kaydediliyor');
+  toast('Drive\'a kaydediliyor...');
+  var veri=_fotoSizKopyala(V);
+  var payload=encodeURIComponent(JSON.stringify({action:'save',payload:veri}));
+  fetch(DRIVE_URL+'?data='+payload,{method:'GET'})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.status==='ok'){_driveSyncGoster('ok','Kaydedildi');toast('Drive\'a kaydedildi!');}
+    else{_driveSyncGoster('hata','Hata');toast('Drive hatasi: '+(d.message||'?'));}
+  }).catch(function(e){_driveSyncGoster('hata','Hata');toast('Drive hatasi: '+(e.message||String(e)));});
+}
+function driveGetir(){
+  if(!DRIVE_URL){toast('Once Drive Ayarlarindan Script URL girin!');driveAyarla();return;}
+  _driveSyncGoster('bekle','Yukleniyor');
+  toast('Drive\'dan yukleniyor...');
+  fetch(DRIVE_URL+'?data='+encodeURIComponent(JSON.stringify({action:'load'})),{method:'GET'})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.status==='ok'&&d.data){
+      V=d.data;
+      if(V.bulutAyar){BIN_KEY=V.bulutAyar.apiKey||BIN_KEY;BIN_ID=V.bulutAyar.binId||BIN_ID;DRIVE_URL=V.bulutAyar.driveUrl||DRIVE_URL;OTOKAYT_API=V.bulutAyar.otoKaytApi===true;OTOKAYT_DRIVE=V.bulutAyar.otoDrive===true;}
+      if(window.Android)Android.saveData(JSON.stringify(V));
+      try{localStorage.setItem('ciftci_veri',JSON.stringify(V));}catch(e){}
+      _driveSyncGoster('ok','Yuklendi');toast('Drive\'dan yuklendi!');R();
+    } else if(d.status==='empty'){
+      _driveSyncGoster('hata','Dosya Yok');toast('Drive\'da kayitli veri bulunamadi.');
+    } else {
+      _driveSyncGoster('hata','Hata');toast('Drive hatasi: '+(d.message||'?'));
+    }
+  }).catch(function(e){_driveSyncGoster('hata','Hata');toast('Drive hatasi: '+(e.message||String(e)));});
+}
+function driveAyarla(){
+  OM('<h2>Google Drive Ayarlari</h2>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:12px">Google Apps Script\'ten aldığınız Web URL\'sini girin.</div>'+
+    '<div class="fr"><label>Script URL</label>'+
+    '<input class="fi" type="text" id="driveUrlInp" value="'+(DRIVE_URL||'')+'" placeholder="https://script.google.com/macros/s/..." autocorrect="off" autocapitalize="off" style="font-size:12px"></div>'+
+    '<button class="btn bg" onclick="driveUrlKaydet()">Kaydet</button>'+
+    '<button class="btn bk" onclick="CM()">Iptal</button>');
+}
+function driveUrlKaydet(){
+  var url=(document.getElementById('driveUrlInp')||{}).value||'';
+  url=url.trim();
+  if(!url||url.indexOf('script.google.com')<0){toast('Gecerli bir Script URL girin!');return;}
+  DRIVE_URL=url;
+  if(!V.bulutAyar)V.bulutAyar={};
+  V.bulutAyar.driveUrl=DRIVE_URL;
+  sv();CM();toast('Drive URL kaydedildi!');R();
+}
+function driveBilgiGoster(){
+  OM('<h2 style="color:#27ae60">&#128196; Google Drive Rehberi</h2>'+
+    '<div style="font-size:13px;color:#333;line-height:1.7;overflow-y:auto;max-height:65vh">'+
+    '<div style="background:#e8f8f0;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-weight:700;color:#27ae60;margin-bottom:6px">&#128196; Google Drive Nedir?</div>'+
+    '<p>Verilerinizi kendi Google hesabınızdaki Drive\'a yedekler. JSONBin\'e ek olarak ikinci bir güvenli yedek noktası oluşturur.</p>'+
+    '<p style="margin-top:6px"><b>Tamamen ücretsiz</b> — Google hesabı olan herkes kullanabilir. Günde 20.000 işlem hakkı var.</p>'+
+    '</div>'+
+    '<div style="background:#eaf4fb;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-weight:700;color:#2980b9;margin-bottom:8px">&#128196; Kurulum — Adım Adım</div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+    '<div style="display:flex;gap:10px;align-items:flex-start"><div style="background:#2980b9;color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">1</div><div><b>script.google.com</b> adresine gidin, Google hesabınızla giriş yapın.</div></div>'+
+    '<div style="display:flex;gap:10px;align-items:flex-start"><div style="background:#2980b9;color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">2</div><div><b>Yeni proje</b> oluşturun, Apps Script kodunu yapıştırın ve kaydedin.</div></div>'+
+    '<div style="display:flex;gap:10px;align-items:flex-start"><div style="background:#2980b9;color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">3</div><div><b>Dağıt → Yeni Dağıtım</b> tıklayın. Tür: <b>Web uygulaması</b> seçin.</div></div>'+
+    '<div style="display:flex;gap:10px;align-items:flex-start"><div style="background:#2980b9;color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">4</div><div>Erişim: <b>Herkes</b> seçin → <b>Dağıt</b> → izin verin.</div></div>'+
+    '<div style="display:flex;gap:10px;align-items:flex-start"><div style="background:#2980b9;color:#fff;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">5</div><div>Çıkan <b>Web uygulaması URL\'sini</b> kopyalayın, aşağıdaki <b>Drive Ayarları</b> butonundan yapıştırın.</div></div>'+
+    '</div></div>'+
+    '<div style="background:#fef9e7;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-weight:700;color:#e67e22;margin-bottom:8px">&#128274; Butonlar Ne İşe Yarar?</div>'+
+    '<div style="margin-bottom:8px"><b style="color:#27ae60">&#128196; Drive\'a Kaydet</b><br>Tüm verilerinizi Google Drive\'daki CiftciTakip_Yedek.json dosyasına kaydeder.</div>'+
+    '<div style="margin-bottom:8px"><b style="color:#2980b9">&#128196; Drive\'dan Yükle</b><br>Drive\'daki yedeği telefonunuza geri yükler.</div>'+
+    '<div><b>Otomatik Drive Kayıt açıksa</b> her veri girişinde Drive\'a da kaydeder.</div>'+
+    '</div>'+
+    '<div style="background:#fdecea;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-weight:700;color:#e74c3c;margin-bottom:6px">&#9888; Dikkat</div>'+
+    '<ul style="padding-left:16px;margin:0;font-size:12px;line-height:1.8">'+
+    '<li>Fotoğraflar Drive\'a <b>yüklenmez</b>, yalnızca telefonda saklanır.</li>'+
+    '<li>Her kaydetmede <b>üzerine yazar</b> — eski yedek silinir.</li>'+
+    '<li>Script URL\'sini kimseyle paylaşmayın.</li>'+
+    '</ul></div>'+
     '</div>'+
     '<button class="btn bg" onclick="CM()" style="margin-top:12px">Anladım, Kapat</button>');
 }
@@ -2643,6 +2761,7 @@ function _otoKaytDurumGoster(){
   function upd(id,aktif){var sw=document.getElementById(id);if(!sw)return;sw.style.background=aktif?'#27ae60':'#ccc';var k=sw.children[0];if(k)k.style.left=aktif?'23px':'3px';}
   upd('otoKaytSwitch',OTOKAYT_API);
   upd('sheetsSwitchKart',OTOKAYT);
+  upd('otoDriveSwitchKart',OTOKAYT_DRIVE);
 }
 function otoKaytToggle(tip){
   if(tip==='api'){
@@ -2651,6 +2770,12 @@ function otoKaytToggle(tip){
     V.bulutAyar.otoKaytApi=OTOKAYT_API;
     sv();_otoKaytDurumGoster();
     toast(OTOKAYT_API?'API oto kayit ACIK':'API oto kayit KAPALI');
+  } else if(tip==='drive'){
+    OTOKAYT_DRIVE=!OTOKAYT_DRIVE;
+    if(!V.bulutAyar)V.bulutAyar={};
+    V.bulutAyar.otoDrive=OTOKAYT_DRIVE;
+    sv();_otoKaytDurumGoster();
+    toast(OTOKAYT_DRIVE?'Drive oto kayit ACIK':'Drive oto kayit KAPALI');
   } else {
     OTOKAYT=!OTOKAYT;
     if(!V.bulutAyar)V.bulutAyar={};
@@ -2663,10 +2788,13 @@ function otoKaytToggle(tip){
   var _sv0=sv;
   sv=function(){
     _sv0.apply(this,arguments);
-
     if(OTOKAYT_API&&BIN_ID&&BIN_KEY&&navigator.onLine){
       clearTimeout(_otoApiTimer);
       _otoApiTimer=setTimeout(function(){if(typeof bulutKaydet==='function')bulutKaydet();},3500);
+    }
+    if(OTOKAYT_DRIVE&&DRIVE_URL&&navigator.onLine){
+      clearTimeout(_otoDriveTimer);
+      _otoDriveTimer=setTimeout(function(){if(typeof driveKaydet==='function')driveKaydet();},5000);
     }
   };
 })();
