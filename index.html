@@ -836,7 +836,7 @@ function kH(){
 var hx={tarlaIndex:+gv('f0'),tarih:gv('f1'),girisTipi:_hTip,piyasaKasa:+gv('f2'),piyasaKasaKg:+gv('f3'),piyasaTotalKg:pk,piyasaDarali:!!(_darEl&&_darEl.checked),aromaDarali:!!(_aDarEl&&_aDarEl.checked),piyasaFiyat:+gv('f4'),aromaKasa:+gv('f5'),aromaKasaKg:+gv('f6'),aromaTotalKg:ak,aromaFiyat:+gv('f7'),not:gv('f8'),foto:window._hasatFoto||_mevcutHFoto};if(!V.hasatKayitlari)V.hasatKayitlari=[];if(EI>=0)V.hasatKayitlari[EI]=hx;else V.hasatKayitlari.push(hx);sv();CM();R();}
 
 // GIDER
-var KAT=['Tohum/Fide','Gubre','Ilac/Zirai','Makine/Yakit','Isci Ucreti','Su/Sulama','Nakliye','Kira','Sigorta','Vergi','Diger'];
+var KAT=['Tohum/Fide','Gubre','Ilac/Zirai','Makine/Yakit','Isci Ucreti','Su/Sulama','Nakliye','Kira','Sigorta','Vergi','diger'];
 function p2(){document.getElementById('sub').textContent='Gider Kayitlari';var gs=(V.giderler||[]).slice().sort(function(a,b){return (b.tarih||'').localeCompare(a.tarih||'');});var op=((V.isci&&V.isci.cavusOdemeleri)||[]).map(function(o){return {tarih:o.tarih?o.tarih.split('T')[0]:'',kategori:'Isci',aciklama:'Cavus Odemesi'+(o.not?' '+o.not:''),tutar:o.tutar,_a:true};});var all=gs.map(function(x,i){var _x={};for(var _k in x)_x[_k]=x[_k];_x._i=i;return _x;}).concat(op).sort(function(a,b){return (b.tarih||'').localeCompare(a.tarih||'');});var top=all.reduce(function(s,x){return s+Number(x.tutar||0);},0);var rows=all.map(function(x){var d=x.tarih?new Date(x.tarih).toLocaleDateString('tr-TR'):'';var clk=x._a?'void(0)':'yG('+x._i+')';return '<div class="li" onclick="'+clk+'"><div><div class="mn">'+x.aciklama+'</div><div class="sb">'+d+(x.kategori?' - '+x.kategori:'')+'</div></div><div class="rt"><div class="at" style="color:#e74c3c">TL '+f(x.tutar)+'</div></div></div>';}).join('');document.getElementById('cnt').innerHTML='<div class="mc fc" style="margin-bottom:12px"><div class="l">Toplam Gider</div><div class="v" style="color:#e74c3c">TL '+f(top)+'</div></div><div class="card">'+(rows||'<div class="em">Kayit yok</div>')+'</div>';}
 function yG(idx){EI=idx===undefined?-1:idx;var gx=EI>=0?(V.giderler||[])[EI]:{tarih:td()};var ko=KAT.map(function(k){return '<option'+(gx.kategori===k?' selected':'')+'>'+k+'</option>';}).join('');OM('<h2>'+(EI>=0?'Gider Duzenle':'Yeni Gider')+'</h2><div class="fr"><label>Tarih</label><input class="fi" type="date" id="g0" value="'+(gx.tarih||td())+'"></div><div class="fr"><label>Kategori</label><select class="fi" id="g1">'+ko+'</select></div><div class="fr"><label>Aciklama</label><input class="fi" type="text" id="g2" value="'+(gx.aciklama||'')+'"></div><div class="fr"><label>Tutar TL</label><input class="fi" type="number" id="g3" value="'+(gx.tutar||'')+'" step="0.01"></div><div class="fr"><label>Not</label><input class="fi" type="text" id="g4" value="'+(gx.not||'')+'"></div>'+(EI>=0?'<button class="btn br" onclick="onay(function(){V.giderler.splice(EI,1);sv();CM();R();})">Sil</button>':'')+'<button class="btn bg" onclick="kG()">Kaydet</button><button class="btn bk" onclick="CM()">Iptal</button>');}
 function kG(){var ac=gv('g2'),tu=+gv('g3');if(!ac||!tu){toast('Aciklama ve tutar gerekli');return;}var gx={id:EI>=0?((V.giderler||[])[EI]||{}).id||uid():uid(),tarih:gv('g0'),kategori:gv('g1'),aciklama:ac,tutar:tu,not:gv('g4')};if(!V.giderler)V.giderler=[];if(EI>=0)V.giderler[EI]=gx;else V.giderler.push(gx);sv();CM();R();}
@@ -1601,7 +1601,7 @@ function kT(){var ad=gv('t0').trim();if(!ad){toast('Tarla adi girin');return;}va
 
 // AYARLAR
 // ── GÜBRE SAYFASI ──────────────────────────────────────────────────────────
-var GUBRELER=['20-20-0','15-15-15','0-0-60 (Potasyum Klorür)','Üre (46-0-0)','CAN (26-0-0)','DAP (18-46-0)','MAP (12-61-0)','Amonyum Sülfat (21-0-0)','Potasyum Nitrat','Kalsiyum Nitrat','Magnezyum Sülfat','Bor','Çinko Sülfat','Demir EDTA','Mangan Sülfat','Humik Asit','Fosfat','Triple Süper Fosfat','Mono Amonyum Fosfat','Di Amonyum Fosfat','NPK 10-10-10','NPK 12-12-17','NPK 20-10-10','Sıvı Gübre','Yaprak Gübresi','Organik Gübre','Ahır Gübresi','Kompost'];
+var GUBRELER=['20-20-0','15-15-15','0-0-60 (Potasyum Klorür)','Üre (46-0-0)','CAN (26-0-0)','DAP (18-46-0)','MAP (12-61-0)','Amonyum Sülfat (21-0-0)','Potasyum Nitrat','Kalsiyum Nitrat','Magnezyum Sülfat','Bor','Çinko Sülfat','Demir EDTA','Mangan Sülfat','Humik Asit','Fosfat','Triple Süper Fosfat','Mono Amonyum Fosfat','Di Amonyum Fosfat','NPK 10-10-10','NPK 12-12-17','NPK 20-10-10','Sıvı Gübre','Yaprak Gübresi','Organik Gübre','Ahır Gübresi','Kompost','__diger__'];
 
 function p7(){
   document.getElementById('sub').textContent='Gübreleme';
@@ -1641,12 +1641,13 @@ function yGB(idx){
     return '<option value="'+t.ad+'"'+(k.tarla===t.ad?' selected':'')+'>'+t.ad+' ('+(t.donum||0)+' dönüm)</option>';
   }).join('');
   var go='<option value="">Gübre secin...</option>'+GUBRELER.map(function(g){
-    return '<option value="'+g+'"'+(k.gubreAdi===g?' selected':'')+'>'+g+'</option>';
+    var label=g==='__diger__'?'-- Diger / Ozel Gubre --':g;
+    return '<option value="'+g+'"'+(k.gubreAdi===g?' selected':'')+'>'+label+'</option>';
   }).join('');
   OM('<h2>'+(EI>=0?'Kayit Duzenle':'Yeni Gubre Kaydi')+'</h2>'+
     '<div class="fr"><label>Tarih</label><input class="fi" type="date" id="gb_tarih" value="'+(k.tarih||td())+'"></div>'+
     '<div class="fr"><label>Tarlalar</label>'+gbTarlaCheckbox(k)+'</div>'+
-    '<div class="fr"><label>Gubre</label>'+
+    '<select class="fi" id="gb_gubre" onchange="var oe=document.getElementById(\'gb_gubreOzel\');if(oe)oe.style.display=this.value===\'diger\'?\'block\':\'none\'">'+go+'</select>'+
     '<select class="fi" id="gb_gubre" onchange="var oe=document.getElementById(\'gb_gubreOzel\');if(oe)oe.style.display=this.value===\'diger\'?\'block\':\'none\'">'+go+'</select>'+
     '<input class="fi" type="text" id="gb_gubreOzel" placeholder="Gubre adi girin" style="margin-top:6px;display:none">'+
     '</div>'+
@@ -1662,6 +1663,15 @@ function yGB(idx){
 
 function kGB(){
   var tarih=gv('gb_tarih');var tarlalar=gbSeciliTarlalar();var tarla=tarlalar[0]||'';var gubre=gv('gb_gubre');
+  if(gubre==='__diger__'){
+    var _ozel=(document.getElementById('gb_gubreOzel')||{}).value||'';
+    if(_ozel.trim()){
+      gubre=_ozel.trim();
+      var _og2=JSON.parse(localStorage.getItem('ozelGubreler')||'[]');
+      if(_og2.indexOf(gubre)<0){_og2.push(gubre);localStorage.setItem('ozelGubreler',JSON.stringify(_og2));}
+      if(GUBRELER.indexOf(gubre)<0)GUBRELER.splice(GUBRELER.indexOf('__diger__'),0,gubre);
+    }
+  }
   var donum=parseFloat(gv('gb_donum'))||0;var toplam=parseFloat(gv('gb_toplam'))||0;
   var not=gv('gb_not');
   if(!tarlalar.length){toast('En az bir tarla secin!');return;}
