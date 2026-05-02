@@ -1602,33 +1602,117 @@ function kT(){var ad=gv('t0').trim();if(!ad){toast('Tarla adi girin');return;}va
 // AYARLAR
 // ── GÜBRE SAYFASI ──────────────────────────────────────────────────────────
 var GUBRELER=['20-20-0','15-15-15','0-0-60 (Potasyum Klorür)','Üre (46-0-0)','CAN (26-0-0)','DAP (18-46-0)','MAP (12-61-0)','Amonyum Sülfat (21-0-0)','Potasyum Nitrat','Kalsiyum Nitrat','Magnezyum Sülfat','Bor','Çinko Sülfat','Demir EDTA','Mangan Sülfat','Humik Asit','Fosfat','Triple Süper Fosfat','Mono Amonyum Fosfat','Di Amonyum Fosfat','NPK 10-10-10','NPK 12-12-17','NPK 20-10-10','Sıvı Gübre','Yaprak Gübresi','Organik Gübre','Ahır Gübresi','Kompost','__diger__'];
-try{var _og=JSON.parse(localStorage.getItem('ozelGubreler')||'[]');_og.forEach(function(x){if(GUBRELER.indexOf(x)<0)GUBRELER.splice(GUBRELER.indexOf('__diger__'),0,x);});}catch(e){}
 
 function p7(){
-  document.getElementById('sub').textContent='Gübreleme';
-  var ks=(V.gubre&&V.gubre.kayitlar||[]).slice().sort(function(a,b){return (b.tarih||'').localeCompare(a.tarih||'');});
-  if(!ks.length){document.getElementById('cnt').innerHTML='<div class="card"><div class="em">Kayit yok. + butonuna basin.</div></div>';return;}
-  var rows=ks.map(function(k,i){
-    var ri=(V.gubre.kayitlar).indexOf(k);
-    var d=k.tarih?new Date(k.tarih).toLocaleDateString('tr-TR'):'';
-    return '<div class="li" onclick="yGB('+ri+')"><div><div class="mn">'+(k.tarla||'?')+' - '+(k.gubreAdi||'')+'</div><div class="sb">'+d+' | Dönüme: '+(k.donumMiktar||0)+' kg | Toplam: '+(k.toplamMiktar||0)+' kg</div></div></div>';
-  }).join('');
+  document.getElementById('sub').textContent='Gübre';
+  var kayitlar=(V.gubre&&V.gubre.kayitlar)||[];
+  if(!kayitlar.length){
+    document.getElementById('cnt').innerHTML='<div class="card"><p style="color:#aaa;text-align:center;padding:20px">Henuz gubre kaydi yok.</p></div>';
+    return;
+  }
+  // groupId ile grupla
+  var gruplar=[];
+  var gidMap={};
+  kayitlar.forEach(function(k,idx){
+    var gid=k.groupId||('_tek_'+idx);
+    if(!gidMap[gid]){
+      gidMap[gid]={kayitlar:[],ilkIdx:idx,gid:gid};
+      gruplar.push(gidMap[gid]);
+    }
+    gidMap[gid].kayitlar.push({k:k,idx:idx});
+  });
+  gruplar.sort(function(a,b){return (b.kayitlar[0].k.tarih||'').localeCompare(a.kayitlar[0].k.tarih||'');});
+
+  var rows='';
+  gruplar.forEach(function(grup){
+    var ilk=grup.kayitlar[0].k;
+    var ilkIdx=grup.kayitlar[0].idx;
+    var tarlalar=grup.kayitlar.map(function(x){return x.k.tarla||'';}).filter(Boolean);
+    var toplamKg=grup.kayitlar.reduce(function(s,x){return s+(parseFloat(x.k.toplamMiktar)||0);},0);
+    var tarlaStr=_tarlaGrupla(tarlalar);
+
+    if(grup.kayitlar.length>1){
+      // Toplu kayıt
+      rows+='<div style="background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid #f39c12">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        '<div style="flex:1">'+
+        '<div style="font-size:11px;color:#f39c12;font-weight:700;margin-bottom:4px">'+ilk.tarih+' | '+tarlalar.length+' tarla</div>'+
+        '<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+tarlaStr+'</div>'+
+        '<div style="font-size:13px;color:#555">'+ilk.gubreAdi+'</div>'+
+        (ilk.donumMiktar?'<div style="font-size:12px;color:#888">'+ilk.donumMiktar+' kg/dönüm | Toplam: '+toplamKg.toFixed(1)+' kg</div>':
+          '<div style="font-size:12px;color:#888">Toplam: '+toplamKg.toFixed(1)+' kg</div>')+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;gap:4px;margin-left:8px">'+
+        '<button onclick="yGB('+ilkIdx+')" style="padding:6px 10px;border-radius:8px;border:none;background:#3498db;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Duzenle</button>'+
+        '<button onclick="kGBGrupSil(\''+grup.gid+'\')" style="padding:6px 10px;border-radius:8px;border:none;background:#e74c3c;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Sil</button>'+
+        '</div></div></div>';
+    } else {
+      // Tek kayıt
+      var k=ilk;var ri=ilkIdx;
+      rows+='<div class="li"><div style="flex:1">'+
+        '<div class="mn">'+(k.gubreAdi||'?')+'</div>'+
+        '<div class="sb">'+(k.tarih||'')+' | '+(k.tarla||'?')+
+          (k.donumMiktar?' | '+k.donumMiktar+' kg/dönüm':'')+
+          (k.toplamMiktar?' | Toplam: '+k.toplamMiktar+' kg':'')+
+          (k.not?' | '+k.not:'')+
+        '</div></div>'+
+        '<div style="display:flex;flex-direction:column;gap:4px;margin-left:8px">'+
+        '<button onclick="yGB('+ri+')" style="padding:6px 10px;border-radius:8px;border:none;background:#f0f0f0;color:#555;font-size:12px;font-weight:700;cursor:pointer">Duzenle</button>'+
+        '<button onclick="kGBSil('+ri+')" style="padding:6px 10px;border-radius:8px;border:none;background:#fdecea;color:#e74c3c;font-size:12px;font-weight:700;cursor:pointer">Sil</button>'+
+        '</div></div>';
+    }
+  });
   document.getElementById('cnt').innerHTML='<div class="card">'+rows+'</div>';
 }
 
+function kGBGrupSil(gid){
+  if(!confirm('Bu tarihteki tum kayitlari silmek istiyor musunuz?'))return;
+  V.gubre.kayitlar=(V.gubre.kayitlar||[]).filter(function(k,i){
+    var kg=k.groupId||('_tek_'+i);return kg!==gid;
+  });
+  sv();R();toast('Silindi!');
+}
+
+function kGBSil(idx){
+  if(!confirm('Bu kaydi silmek istiyor musunuz?'))return;
+  (V.gubre&&V.gubre.kayitlar||[]).splice(idx,1);
+  sv();R();toast('Silindi!');
+}
+
+
+function kGBSil(idx){
+  if(!confirm('Bu kaydi silmek istiyor musunuz?'))return;
+  (V.gubre&&V.gubre.kayitlar||[]).splice(idx,1);
+  sv();R();toast('Silindi!');
+}
+
 function gbHesapla(tip){
-  var tarlaEl=document.getElementById('gb_tarla');
-  var donum=0;
-  if(tarlaEl&&tarlaEl.value&&V.tarlalar){
-    for(var _i=0;_i<V.tarlalar.length;_i++){if(V.tarlalar[_i].ad===tarlaEl.value){donum=parseFloat(V.tarlalar[_i].donum)||0;break;}}
+  // Seçili tüm tarlaların toplam dönümünü hesapla
+  var seciliTarlalar=gbSeciliTarlalar();
+  var toplamDonum=0;
+  seciliTarlalar.forEach(function(ta){
+    var t=(V.tarlalar||[]).find(function(x){return x.ad===ta;});
+    toplamDonum+=t?parseFloat(t.donum)||0:0;
+  });
+  if(toplamDonum<=0){
+    // Tek tarla olabilir - eski yöntem
+    var ilk=seciliTarlalar[0];
+    var t=(V.tarlalar||[]).find(function(x){return x.ad===ilk;});
+    toplamDonum=t?parseFloat(t.donum)||0:0;
   }
-  if(donum<=0)return;
+  if(toplamDonum<=0)return;
   if(tip==='donum'){
-    var dm=parseFloat(document.getElementById('gb_donum').value)||0;
-    document.getElementById('gb_toplam').value=dm>0?(dm*donum).toFixed(1):'';
+    var dm=parseFloat((document.getElementById('gb_donum')||{}).value)||0;
+    if(dm>0){
+      var el=document.getElementById('gb_toplam');
+      if(el)el.value=(dm*toplamDonum).toFixed(1);
+    }
   } else {
-    var tm=parseFloat(document.getElementById('gb_toplam').value)||0;
-    document.getElementById('gb_donum').value=tm>0&&donum>0?(tm/donum).toFixed(1):'';
+    var tm=parseFloat((document.getElementById('gb_toplam')||{}).value)||0;
+    if(tm>0){
+      var el=document.getElementById('gb_donum');
+      if(el)el.value=(tm/toplamDonum).toFixed(1);
+    }
   }
 }
 function gbHD(){gbHesapla('donum');}
@@ -1650,8 +1734,7 @@ function yGB(idx){
     '<div class="fr"><label>Tarlalar</label>'+gbTarlaCheckbox(k)+'</div>'+
     '<div class="fr"><label>Gubre</label>'+
     '<select class="fi" id="gb_gubre" onchange="var oe=document.getElementById(\'gb_gubreOzel\');if(oe)oe.style.display=this.value===\'__diger__\'?\'block\':\'none\'">'+go+'</select>'+
-    '<input class="fi" type="text" id="gb_gubreOzel" placeholder="Gubre adi girin" style="margin-top:6px;display:none">'+
-    '</div>'+
+    '<input class="fi" type="text" id="gb_gubreOzel" placeholder="Gubre adi yaz..." style="margin-top:6px;display:none">'+
     '<div class="fr2">'+
       '<div class="fr"><label>Donume (kg)</label><input class="fi" type="number" id="gb_donum" value="'+(k.donumMiktar||'')+'" placeholder="kg/donum" oninput="gbHD()"></div>'+
       '<div class="fr"><label>Toplam (kg)</label><input class="fi" type="number" id="gb_toplam" value="'+(k.toplamMiktar||'')+'" placeholder="toplam kg" oninput="gbHT()"></div>'+
@@ -1689,9 +1772,33 @@ function kGB(){
   }
   if(!V.gubre)V.gubre={kayitlar:[]};
   if(!V.gubre.kayitlar)V.gubre.kayitlar=[];
-  var kayit={tarih:tarih,tarla:tarla,tarlalar:tarlalar,gubreAdi:gubre,donumMiktar:donum,toplamMiktar:toplam,not:not};
-  if(EI>=0)V.gubre.kayitlar[EI]=kayit;
-  else V.gubre.kayitlar.push(kayit);
+  if(EI>=0){
+    // Düzenleme - tek kayıt
+    var kayit={tarih:tarih,tarla:tarla,tarlalar:tarlalar,gubreAdi:gubre,donumMiktar:donum,toplamMiktar:toplam,not:not};
+    V.gubre.kayitlar[EI]=kayit;
+  } else if(tarlalar.length>1){
+    // Toplu - groupId ile birleştir
+    var gid=uid();
+    var toplamDonum=0;
+    tarlalar.forEach(function(ta){
+      var t=(V.tarlalar||[]).find(function(x){return x.ad===ta;});
+      toplamDonum+=t?parseFloat(t.donum)||0:0;
+    });
+    tarlalar.forEach(function(ta){
+      var t=(V.tarlalar||[]).find(function(x){return x.ad===ta;});
+      var dn=t?parseFloat(t.donum)||0:0;
+      var tarlaToplam=toplam;
+      if(toplam>0&&toplamDonum>0&&dn>0) tarlaToplam=parseFloat((toplam*dn/toplamDonum).toFixed(1));
+      if(donum>0&&dn>0) tarlaToplam=parseFloat((donum*dn).toFixed(1));
+      V.gubre.kayitlar.push({
+        groupId:gid,tarih:tarih,tarla:ta,tarlalar:tarlalar,
+        gubreAdi:gubre,donumMiktar:donum,toplamMiktar:tarlaToplam,not:not
+      });
+    });
+  } else {
+    var kayit={tarih:tarih,tarla:tarla,tarlalar:tarlalar,gubreAdi:gubre,donumMiktar:donum,toplamMiktar:toplam,not:not};
+    V.gubre.kayitlar.push(kayit);
+  }
   sv();CM();R();
 }
 
@@ -2852,7 +2959,7 @@ function gbTarlaCheckbox(k){
     (V.tarlalar||[]).map(function(t){
       var checked=sec.indexOf(t.ad)>=0;
       return '<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">'+
-        '<input type="checkbox" value="'+t.ad+'" '+(checked?'checked':'')+' style="width:16px;height:16px;accent-color:#27ae60">'+
+        '<input type="checkbox" value="'+t.ad+'" '+(checked?'checked':'')+' onchange="gbHD()" style="width:16px;height:16px;accent-color:#27ae60">'+
         '<span style="font-size:13px">'+t.ad+' <span style="color:#888;font-size:11px">('+( t.donum||0)+' dönüm)</span></span>'+
         '</label>';
     }).join('')+
