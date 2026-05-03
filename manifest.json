@@ -1,12 +1,11 @@
 {
-  "name": "Çiftçi Takip",
-  "short_name": "Çiftçi Takip",
-  "description": "Tarım Yönetim Sistemi",
-  "start_url": "/",
-  "scope": "/",
+  "name": "Ciftci Takip",
+  "short_name": "Ciftci Takip",
+  "description": "Tarim Yonetim Sistemi",
+  "start_url": "/app.html",
   "display": "standalone",
-  "background_color": "#1959B9",
-  "theme_color": "#1959B9",
+  "background_color": "#f0f4f0",
+  "theme_color": "#27ae60",
   "orientation": "portrait",
   "icons": [
     {
