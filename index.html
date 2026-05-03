@@ -69,7 +69,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4f0;
 <div class="ov" id="ov2" style="z-index:60" onclick="if(event.target===this)CM2()"><div class="sh" id="sh2" style="height:80vh;display:flex;flex-direction:column"></div></div>
 <script>
 var V={};
-var PG=0,EI=-1,BIN_KEY='',BIN_ID='',DRIVE_URL='',OTOKAYT_API=false,OTOKAYT_DRIVE=false,_otoApiTimer=null,_otoDriveTimer=null,KASA_DARA=parseFloat(localStorage.getItem('kasaDara'))||0.4;AROMA_DARA=parseFloat(localStorage.getItem('aromaDara'))||3;
+var PG=0,EI=-1,BIN_KEY='',BIN_ID='',DRIVE_URL='',SHEETS_URL='',OTOKAYT=false,OTOKAYT_API=false,OTOKAYT_DRIVE=false,_otoApiTimer=null,_otoDriveTimer=null,KASA_DARA=parseFloat(localStorage.getItem('kasaDara'))||0.4,AROMA_DARA=parseFloat(localStorage.getItem('aromaDara'))||3;
 var _ilacFiltreTarla='',_ilacFiltreIlac='';
 var _hasatFiltreTarla='',_hasatFiltreMeyve='';
 var AKTIF_YIL=new Date().getFullYear().toString();
@@ -1183,12 +1183,6 @@ function ilacDozGuncelle(){
     ilacDozHesap(_di);
   }
 }
-function iGetDonum(){
-  var tarlaEl=document.getElementById('i1');
-  if(!tarlaEl||!tarlaEl.value||!V.tarlalar)return 0;
-  for(var _i=0;_i<V.tarlalar.length;_i++){if(V.tarlalar[_i].ad===tarlaEl.value)return parseFloat(V.tarlalar[_i].donum)||0;}
-  return 0;
-}
 function iGuncelleSonuc(){
   var donum=iGetDonum();
   var donumSu=parseFloat(document.getElementById('i_donumsu').value)||0;
@@ -1782,30 +1776,6 @@ function kGBSil(idx){
 }
 
 
-function kGBSil(idx){
-  if(!confirm('Bu kaydi silmek istiyor musunuz?'))return;
-  (V.gubre&&V.gubre.kayitlar||[]).splice(idx,1);
-  sv();R();toast('Silindi!');
-}
-
-function gbTarlaSecimiMeyve(meyve){
-  var checkboxlar=document.querySelectorAll('#gbTarlaDiv input[type=checkbox]');
-  var tarlaMeyveler={};
-  (V.tarlalar||[]).forEach(function(t){tarlaMeyveler[t.ad]=t.meyve||'';});
-  var hepsiSecili=true;
-  for(var _ci=0;_ci<checkboxlar.length;_ci++){
-    if(tarlaMeyveler[checkboxlar[_ci].value]===meyve&&!checkboxlar[_ci].checked){hepsiSecili=false;break;}
-  }
-  for(var _ci2=0;_ci2<checkboxlar.length;_ci2++){
-    if(tarlaMeyveler[checkboxlar[_ci2].value]===meyve){
-      checkboxlar[_ci2].checked=!hepsiSecili;
-      checkboxlar[_ci2].parentElement.style.background=(!hepsiSecili?'#e8f8f0':'#f8f8f8');
-    }
-  }
-  var dm=parseFloat((document.getElementById('gb_donum')||{}).value)||0;
-  var tm=parseFloat((document.getElementById('gb_toplam')||{}).value)||0;
-  if(dm>0)gbHesapla('donum');else if(tm>0)gbHesapla('toplam');
-}
 function gbTarlaSecimiMeyve(meyve){
   var checkboxlar=document.querySelectorAll('#gbTarlaDiv input[type=checkbox]');
   var tarlaMeyveler={};
@@ -2226,50 +2196,63 @@ function _driveGetirSonuc(txt){
 }
 function driveKaydet(){
   if(!DRIVE_URL){toast('Once Drive Ayarlarindan Script URL girin!');driveAyarla();return;}
-  if(window.Android&&Android.httpPostAsync){
+  if(!window.Android){
+    // PWA'da Drive kaydetme CORS nedeniyle çalışmıyor
+    // no-cors ile gönder - yanıt okunamaz ama istek gider
     _driveSyncGoster('bekle','Kaydediliyor');
     var veri=_fotoSizKopyala(V);
-    Android.httpPostAsync(DRIVE_URL,JSON.stringify({action:'save',payload:veri}),'_driveKaydetSonuc');
+    fetch(DRIVE_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'save',payload:veri})
+    }).then(function(){
+      _driveSyncGoster('ok','Gonderildi');
+      toast('Drive\'a gonderildi (PWA modunda dogrulama yapılamıyor).');
+    }).catch(function(e){
+      _driveSyncGoster('hata','Hata');
+      toast('Drive hatasi: '+String(e));
+    });
     return;
   }
-  // PWA: no-cors POST - yanit okunamaz ama veri gider, sonra GET ile dogrula
+  // APK: Kotlin bridge ile POST
   _driveSyncGoster('bekle','Kaydediliyor');
   var veri=_fotoSizKopyala(V);
-  var body=JSON.stringify({action:'save',payload:veri});
-  fetch(DRIVE_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:body})
-    .then(function(){
-      // POST gitti - GET ile dogrula
-      return fetch(DRIVE_URL+'?action=load');
-    })
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d.status==='ok'){_driveSyncGoster('ok','Kaydedildi');toast('Drive\'a kaydedildi!');}
-      else{_driveSyncGoster('hata','Hata');toast('Drive kayit hatasi');}
-    }).catch(function(){
-      // POST gitti ama dogrulama yapilamadi - muhtemelen tamam
-      _driveSyncGoster('ok','Gonderildi');
-      toast('Drive\'a gonderildi!');
-    });
+  Android.httpPostAsync(DRIVE_URL,JSON.stringify({action:'save',payload:veri}),'_driveKaydetSonuc');
 }
 function driveGetir(){
   if(!DRIVE_URL){toast('Once Drive Ayarlarindan Script URL girin!');driveAyarla();return;}
   _driveSyncGoster('bekle','Yukleniyor');
   toast('Drive\'dan yukleniyor...');
   if(window.Android&&Android.httpGetAsync){
+    // APK: Kotlin bridge ile GET
     Android.httpGetAsync(DRIVE_URL+'?action=load','_driveGetirSonuc');
-    return;
-  }
-  // PWA: redirect:follow ile fetch - Apps Script 302 redirect yapar
-  fetch(DRIVE_URL+'?action=load', {redirect:'follow'})
-    .then(function(r){ return r.text(); })
-    .then(function(t){
-      try{ _driveGetirSonuc(JSON.parse(t)); }
-      catch(e){ _driveSyncGoster('hata','Hata'); toast('Drive yanit hatasi: '+t.substring(0,60)); }
-    })
-    .catch(function(e){
+  } else {
+    // PWA: JSONP ile GET
+    var cbName='_driveCb_'+Date.now();
+    var script=document.createElement('script');
+    var timer=setTimeout(function(){
+      delete window[cbName];
+      try{document.body.removeChild(script);}catch(e){}
       _driveSyncGoster('hata','Hata');
-      toast('Drive yuklenemedi: '+String(e));
-    });
+      toast('Drive: Zaman asimi. Script URL dogru mu?');
+    },15000);
+    window[cbName]=function(d){
+      clearTimeout(timer);
+      delete window[cbName];
+      try{document.body.removeChild(script);}catch(e){}
+      _driveGetirSonuc(d);
+    };
+    script.onerror=function(){
+      clearTimeout(timer);
+      delete window[cbName];
+      try{document.body.removeChild(script);}catch(e){}
+      _driveSyncGoster('hata','Hata');
+      toast('Drive: Script yuklenemedi.');
+    };
+    script.src=DRIVE_URL+'?callback='+cbName+'&action=load';
+    document.body.appendChild(script);
+  }
 }
 function driveAyarla(){
   OM('<h2>Google Drive Ayarlari</h2>'+
@@ -2297,7 +2280,7 @@ function _kodKopyalaFallback(k){
   document.body.removeChild(ta);
 }
 function driveBilgiGoster(){
-  var SCRIPT_KODU='function doGet(e) {\n  var action = e.parameter.action || \'load\';\n  return handle(action, null);\n}\n\nfunction doPost(e) {\n  try {\n    var body = e.postData && e.postData.contents ? e.postData.contents : \'{}\';\n    var d = JSON.parse(body);\n    return handle(d.action || \'\', d.payload || null);\n  } catch(err) {\n    return out({status:\'error\', message: err.toString()});\n  }\n}\n\nfunction handle(action, payload) {\n  var fileName = \'CiftciTakip_Yedek.json\';\n  var folder = DriveApp.getRootFolder();\n  try {\n    if (action === \'save\') {\n      var files = folder.getFilesByName(fileName);\n      if (files.hasNext()) {\n        files.next().setContent(JSON.stringify(payload));\n      } else {\n        folder.createFile(fileName, JSON.stringify(payload), MimeType.PLAIN_TEXT);\n      }\n      return out({status:\'ok\'});\n    }\n    if (action === \'load\') {\n      var files = folder.getFilesByName(fileName);\n      if (files.hasNext()) {\n        var data = JSON.parse(files.next().getBlob().getDataAsString());\n        return out({status:\'ok\', data: data});\n      }\n      return out({status:\'empty\'});\n    }\n    return out({status:\'error\', message:\'Bilinmeyen action: \' + action});\n  } catch(err) {\n    return out({status:\'error\', message: err.toString()});\n  }\n}\n\nfunction out(obj) {\n  return ContentService\n    .createTextOutput(JSON.stringify(obj))\n    .setMimeType(ContentService.MimeType.JSON);\n}';
+  var SCRIPT_KODU='function doGet(e){\n  var cb=e.parameter.callback;\n  var action=e.parameter.action||"";\n  var payload=null;\n  if(e.parameter.data){try{var d=JSON.parse(e.parameter.data);action=d.action||action;payload=d.payload||null;}catch(err){}}\n  var result=handle(action,payload);\n  if(cb)return ContentService.createTextOutput(cb+"("+result.getContent()+")").setMimeType(ContentService.MimeType.JAVASCRIPT);\n  return result;\n}\n\nfunction doPost(e){\n  try{\n    var d=e.parameter&&e.parameter.data?JSON.parse(e.parameter.data):e.postData?JSON.parse(e.postData.contents):{};\n    return handle(d.action||"",d.payload||null);\n  }catch(err){return out({status:"error",message:err.toString()});}\n}\n\nfunction handle(action,payload){\n  var f="CiftciTakip_Yedek.json";\n  var folder=DriveApp.getRootFolder();\n  try{\n    if(action==="save"){\n      var files=folder.getFilesByName(f);\n      if(files.hasNext())files.next().setContent(JSON.stringify(payload));\n      else folder.createFile(f,JSON.stringify(payload),MimeType.PLAIN_TEXT);\n      return out({status:"ok"});\n    }\n    if(action==="load"){\n      var files=folder.getFilesByName(f);\n      if(files.hasNext())return out({status:"ok",data:JSON.parse(files.next().getBlob().getDataAsString())});\n      return out({status:"empty"});\n    }\n    return out({status:"error",message:"Bilinmeyen action: "+action});\n  }catch(err){return out({status:"error",message:err.toString()});}\n}\n\nfunction out(obj){\n  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);\n}';
   OM('<h2 style="color:#27ae60">&#128196; Google Drive Rehberi</h2>'+
     '<div style="font-size:13px;color:#333;line-height:1.7;overflow-y:auto;max-height:68vh">'+
     '<div style="background:#e8f8f0;border-radius:10px;padding:12px;margin-bottom:12px">'+
@@ -2485,7 +2468,7 @@ function otoBulutKontrol(){
   }catch(e){}
 }
 
-function bulutGetir(){_apiSyncGoster('bekle','Yukleniyor');if(!BIN_KEY||!BIN_ID){toast('Once Bulut Ayarlari girin!');bulutAyarla();return;}toast('Yukleniyor...');fetch('https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest',{headers:{'X-Master-Key':BIN_KEY}}).then(function(r){return r.json();}).then(function(d){if(d.record){V=d.record;if(V.bulutAyar){BIN_KEY=V.bulutAyar.apiKey||BIN_KEY;BIN_ID=V.bulutAyar.binId||BIN_ID;SHEETS_URL=V.bulutAyar.sheetsUrl||'';OTOKAYT=V.bulutAyar.otoKayt===true;OTOKAYT_API=V.bulutAyar.otoKaytApi===true;}if(window.Android)Android.saveData(JSON.stringify(V));_apiSyncGoster('ok','Yuklendi');toast('Buluttan yuklendi!');R();}else{toast('Veri bulunamadi');}}).catch(function(){toast('Baglanti hatasi!');});}
+function bulutGetir(){_apiSyncGoster('bekle','Yukleniyor');if(!BIN_KEY||!BIN_ID){toast('Once Bulut Ayarlari girin!');bulutAyarla();return;}toast('Yukleniyor...');fetch('https://api.jsonbin.io/v3/b/'+BIN_ID+'/latest',{headers:{'X-Master-Key':BIN_KEY}}).then(function(r){return r.json();}).then(function(d){if(d.record){V=d.record;if(V.bulutAyar){BIN_KEY=V.bulutAyar.apiKey||BIN_KEY;BIN_ID=V.bulutAyar.binId||BIN_ID;SHEETS_URL=V.bulutAyar.sheetsUrl||'';DRIVE_URL=V.bulutAyar.driveUrl||DRIVE_URL;OTOKAYT=V.bulutAyar.otoKayt===true;OTOKAYT_API=V.bulutAyar.otoKaytApi===true;OTOKAYT_DRIVE=V.bulutAyar.otoDrive===true;}if(window.Android)Android.saveData(JSON.stringify(V));_apiSyncGoster('ok','Yuklendi');toast('Buluttan yuklendi!');R();}else{toast('Veri bulunamadi');}}).catch(function(){toast('Baglanti hatasi!');});}
 
 var _ilacSecIdx=0;
 function ilacSecModal(i){
@@ -2871,14 +2854,14 @@ function aramaYap(q){
   var out='';
   function kart(b,a){return '<div style="background:#fff;border-radius:10px;padding:12px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,.08)"><div style="font-weight:700;font-size:14px">'+b+'</div><div style="font-size:12px;color:#888;margin-top:2px">'+a+'</div></div>';}
   function bas(ikon,ad,n){return '<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;margin:10px 0 5px">'+ikon+' '+ad+' ('+n+')</div>';}
-  var hRes=h.filter(function(x){return [(x.meyve||''),(x.tarla||''),(x.musteri||''),(x.not||'')].some(function(s){return s.toLowerCase().includes(q);});});
-  if(hRes.length){out+=bas('🌾','Hasat',hRes.length);hRes.slice(0,6).forEach(function(x){out+=kart((x.meyve||'?')+' — '+(x.tarla||'?'),(x.tarih||'')+' · '+(x.kg||0)+' kg · '+f(parseFloat(x.tutar)||0));});if(hRes.length>6)out+='<div style="font-size:12px;color:#aaa;text-align:center;margin-bottom:6px">+'+(hRes.length-6)+' kayıt daha</div>';}
+  var hRes=h.filter(function(x){var _tl=V.tarlalar||[];var _t=_tl[x.tarlaIndex]||{};return [(_t.meyve||''),(_t.ad||x.tarla||''),(x.not||'')].some(function(s){return s.toLowerCase().indexOf(q)>=0;});});
+  if(hRes.length){out+=bas('🌾','Hasat',hRes.length);hRes.slice(0,6).forEach(function(x){var _tl=V.tarlalar||[];var _t=_tl[x.tarlaIndex]||{};var _tot=getToplam(x);out+=kart((_t.meyve||_t.ad||'?')+' — '+(_t.ad||x.tarla||'?'),(x.tarih||'')+' · '+(_tot.pk+_tot.ak).toFixed(1)+' kg · TL '+f(_tot.gel));});if(hRes.length>6)out+='<div style="font-size:12px;color:#aaa;text-align:center;margin-bottom:6px">+'+(hRes.length-6)+' kayıt daha</div>';}
   var gRes=g.filter(function(x){return [(x.kategori||''),(x.aciklama||''),(x.tarla||'')].some(function(s){return s.toLowerCase().includes(q);});});
   if(gRes.length){out+=bas('💸','Gider',gRes.length);gRes.slice(0,6).forEach(function(x){out+=kart((x.kategori||'?')+(x.tarla?' · '+x.tarla:''),(x.tarih||'')+' · '+f(parseFloat(x.tutar)||0)+(x.aciklama?' · '+x.aciklama:''));});if(gRes.length>6)out+='<div style="font-size:12px;color:#aaa;text-align:center;margin-bottom:6px">+'+(gRes.length-6)+' kayıt daha</div>';}
-  var iRes=ilacK.filter(function(x){return [(x.ilac||''),(x.tarla||''),(x.not||'')].some(function(s){return s.toLowerCase().includes(q);});});
-  if(iRes.length){out+=bas('🧪','İlaç',iRes.length);iRes.slice(0,4).forEach(function(x){out+=kart((x.ilac||'?')+' — '+(x.tarla||'?'),x.tarih||'');});}
-  var gbrRes=gubreK.filter(function(x){return [(x.urun||''),(x.tarla||'')].some(function(s){return s.toLowerCase().includes(q);});});
-  if(gbrRes.length){out+=bas('🌱','Gübre',gbrRes.length);gbrRes.slice(0,4).forEach(function(x){out+=kart((x.urun||'?')+' — '+(x.tarla||'?'),(x.tarih||'')+' · '+(x.doz||'')+' '+(x.birim||''));});}
+  var iRes=ilacK.filter(function(x){var _iad=(x.ilaclar||[]).map(function(i){return (i.ticari||i.ad||'');}).join(' ');return [_iad,(x.tarla||''),(x.not||'')].some(function(s){return s.toLowerCase().indexOf(q)>=0;});});
+  if(iRes.length){out+=bas('🧪','İlaç',iRes.length);iRes.slice(0,4).forEach(function(x){var _iad2=(x.ilaclar||[]).map(function(i){return i.ticari||i.ad||'';}).filter(Boolean).join(', ');out+=kart((_iad2||'?')+' — '+(x.tarla||'?'),x.tarih||'');});}
+  var gbrRes=gubreK.filter(function(x){return [(x.gubreAdi||x.urun||''),(x.tarla||'')].some(function(s){return s.toLowerCase().indexOf(q)>=0;});});
+  if(gbrRes.length){out+=bas('🌱','Gübre',gbrRes.length);gbrRes.slice(0,4).forEach(function(x){out+=kart((x.gubreAdi||x.urun||'?')+' — '+(x.tarla||'?'),(x.tarih||'')+(x.toplamMiktar?' · '+x.toplamMiktar+' kg':''));});}
   if(!out) out='<p style="color:#aaa;text-align:center;padding:28px;font-size:14px">&#34;'+q+'&#34; için sonuç bulunamadı</p>';
   el.innerHTML=out;
 }
