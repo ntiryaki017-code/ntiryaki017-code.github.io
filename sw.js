@@ -1,4 +1,4 @@
-var CACHE_NAME = 'ciftci-takip-v4';
+var CACHE_NAME = 'ciftci-takip-v5';
 var URLS = [
   '/',
   '/index.html',
@@ -7,7 +7,6 @@ var URLS = [
   '/icon-512.png'
 ];
 
-// Kurulum
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
@@ -19,7 +18,6 @@ self.addEventListener('install', function(e) {
   self.skipWaiting();
 });
 
-// Aktivasyon - eski cache temizle
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
@@ -32,11 +30,9 @@ self.addEventListener('activate', function(e) {
   self.clients.claim();
 });
 
-// Fetch
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
 
-  // Dis API istekleri - cache'leme, direkt network
   if (url.indexOf('script.google.com') >= 0 ||
       url.indexOf('jsonbin.io') >= 0 ||
       url.indexOf('googleapis.com') >= 0 ||
@@ -51,7 +47,6 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  // Local dosyalar - cache-first, network fallback
   e.respondWith(
     caches.match(e.request).then(function(cached) {
       if (cached) return cached;
@@ -64,7 +59,6 @@ self.addEventListener('fetch', function(e) {
         }
         return response;
       }).catch(function() {
-        // Sadece navigasyon isteklerinde index.html'e don
         if (e.request.mode === 'navigate') {
           return caches.match('/index.html');
         }

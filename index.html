@@ -3404,10 +3404,7 @@ function _tarlaGrupla(tarlalar){
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('/sw.js',{scope:'/'})
-      .then(function(r){
-        console.log('SW OK');
-        r.update(); // her açılışta güncelleme kontrol et
-      })
+      .then(function(r){ console.log('SW OK'); r.update(); })
       .catch(function(e){ console.log('SW hata:', e); });
   });
 }
