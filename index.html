@@ -143,6 +143,49 @@ try{setTimeout(function(){otoBulutKontrol();},4000);}catch(e){}
 
 try{if(V.ozelIlaclar&&V.ozelIlaclar.length){V.ozelIlaclar.forEach(function(x){if(ILACLAR.indexOf(x)<0)ILACLAR.push(x);});ILACLAR.sort();}}catch(e){}
 
+// Eski grup ilaç kayıtlarını dönüme göre düzelt
+try{
+  (function(){
+    var kayitlar=(V.ilac&&V.ilac.kayitlar)||[];
+    if(!kayitlar.length)return;
+    var gruplar={};
+    kayitlar.forEach(function(k){
+      if(!k||!k.groupId)return;
+      if(!gruplar[k.groupId])gruplar[k.groupId]=[];
+      gruplar[k.groupId].push(k);
+    });
+    var degisti=false;
+    Object.keys(gruplar).forEach(function(gid){
+      var grup=gruplar[gid];
+      if(grup.length<2)return;
+      // suGirilen = kullanıcının girdiği TOPLAM su
+      var topSuGercek=parseFloat(grup[0].suGirilen)||0;
+      if(topSuGercek<=0)return;
+      var topDonum=0;
+      var donumlar={};
+      grup.forEach(function(k){
+        var tObj=null;var _tl=V.tarlalar||[];
+        for(var i=0;i<_tl.length;i++){if(_tl[i].ad===(k.tarla||'')){tObj=_tl[i];break;}}
+        var dn=tObj?parseFloat(tObj.donum)||0:0;
+        donumlar[k.tarla||'']=dn;
+        topDonum+=dn;
+      });
+      if(topDonum<=0)return;
+      grup.forEach(function(k){
+        var dn=donumlar[k.tarla||'']||0;
+        if(dn>0){
+          var yeniSu=Math.round(topSuGercek*dn/topDonum*10)/10;
+          if(Math.abs((parseFloat(k.su)||0)-yeniSu)>0.5){
+            k.su=yeniSu;
+            degisti=true;
+          }
+        }
+      });
+    });
+    if(degisti)sv();
+  })();
+}catch(e){}
+
 function f(n){return Number(n||0).toLocaleString('tr-TR',{maximumFractionDigits:0});}
 function fk(n){return Number(n||0).toFixed(1);}
 function td(){return new Date().toISOString().split('T')[0];}
@@ -914,16 +957,42 @@ function p4(){
     var topSu=grup.kayitlar.reduce(function(s,x){var _su=x.k.su||x.k.toplamSu||0;return s+(isNaN(parseFloat(_su))?0:parseFloat(_su));},0);
 
     if(grup.kayitlar.length>1){
+      // Her tarla için dönüme göre ilaç miktarı hesapla
+      var grupIlacSatir=grup.kayitlar.map(function(x){
+        var tarlaAd=x.k.tarla||'?';
+        var tarlaObj=null;
+        var _tl=V.tarlalar||[];
+        for(var _ti=0;_ti<_tl.length;_ti++){if(_tl[_ti].ad===tarlaAd){tarlaObj=_tl[_ti];break;}}
+        var donum=tarlaObj?parseFloat(tarlaObj.donum)||0:0;
+        var su=parseFloat(x.k.su||0);
+        var donumSu=parseFloat(x.k.donumSu||ilkK.donumSu||0);
+        // Eğer su kaydedilmemişse dönümden hesapla
+        var gercekSu=su>0?su:(donum>0&&donumSu>0?donum*donumSu:0);
+        // Her ilaç için ml hesapla
+        var ilacBilgi=(ilkK.ilaclar||[]).filter(function(i){return i.ad&&i.doz100;}).map(function(i){
+          var ml=gercekSu>0?Math.round(gercekSu/100*parseFloat(i.doz100)):0;
+          var ad=i.ticari||i.ad;
+          return ml>0?ad+' <b>'+ml+'ml</b>':ad;
+        }).join(', ');
+        var donumStr=donum>0?donum+'dön':'';
+        var suStr=gercekSu>0?Math.round(gercekSu)+'lt':'';
+        return '<div style="background:#f0faf4;border:1px solid #27ae60;border-radius:8px;padding:6px 10px;margin-bottom:4px;font-size:11px">'+
+          '<span style="font-weight:700;color:#1e8449">'+tarlaAd+'</span>'+
+          (donumStr?' <span style="color:#888">'+donumStr+'</span>':'')+
+          (suStr?' · <span style="color:#2980b9">'+suStr+'</span>':'')+
+          (ilacBilgi?' · '+ilacBilgi:'')+
+          '</div>';
+      }).join('');
+
       rows+='<div style="background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.1);border-left:4px solid #27ae60">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
         '<div style="flex:1">'+
         '<div style="font-size:11px;color:#27ae60;font-weight:700;margin-bottom:4px">'+d+' | '+tarlalar.length+' tarla | '+(isNaN(topSu)||topSu<=0?'':topSu.toFixed(0)+'lt')+'</div>'+
         '<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+tarlaStr+'</div>'+
-        '<div style="font-size:12px;color:#555">'+il+'</div>'+
-        (ilkK.foto?'<img src="'+ilkK.foto+'" style="width:100%;border-radius:8px;margin-top:6px;max-height:100px;object-fit:cover">':'')+
-        '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+
-        grup.kayitlar.map(function(x){return '<span style="background:#f0faf4;border:1px solid #27ae60;border-radius:6px;padding:2px 8px;font-size:11px;color:#1e8449">'+x.k.tarla+(parseFloat(x.k.su||0)>0?' '+Math.round(parseFloat(x.k.su||0))+'lt':'')+'</span>';}).join('')+
-        '</div></div>'+
+        '<div style="font-size:12px;color:#555;margin-bottom:6px">'+il+'</div>'+
+        (ilkK.foto?'<img src="'+ilkK.foto+'" style="width:100%;border-radius:8px;margin-top:4px;margin-bottom:6px;max-height:100px;object-fit:cover">':'')+
+        grupIlacSatir+
+        '</div>'+
         '<div style="display:flex;flex-direction:column;gap:4px;margin-left:8px;flex-shrink:0">'
         +'<button onclick="yIGrup(\''+gid+'\')" style="padding:6px 10px;border-radius:8px;border:none;background:#3498db;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Duzenle</button>'
         +'<button onclick="kIGrupSil(\''+gid+'\')" style="padding:6px 10px;border-radius:8px;border:none;background:#e74c3c;color:#fff;font-size:11px;font-weight:700;cursor:pointer">Hepsini Sil</button>'
@@ -931,9 +1000,22 @@ function p4(){
         +'</div></div>';
     } else {
       var k=ilkK;var ri=ilkRi;
+      // Tek tarla - dönüme göre ilaç miktarı
+      var _tarlaObj=null;var _tl2=V.tarlalar||[];
+      for(var _ti2=0;_ti2<_tl2.length;_ti2++){if(_tl2[_ti2].ad===(k.tarla||'')){_tarlaObj=_tl2[_ti2];break;}}
+      var _donum=_tarlaObj?parseFloat(_tarlaObj.donum)||0:0;
+      var _su=parseFloat(k.su||0);
+      var _donumSu=parseFloat(k.donumSu||0);
+      var _gercekSu=_su>0?_su:(_donum>0&&_donumSu>0?_donum*_donumSu:0);
+      var _ilacMiktarStr=(k.ilaclar||[]).filter(function(i){return i.ad&&i.doz100;}).map(function(i){
+        var ml=_gercekSu>0?Math.round(_gercekSu/100*parseFloat(i.doz100)):0;
+        var ad=i.ticari||i.ad;
+        return ml>0?ad+' <b>'+ml+'ml</b>':ad;
+      }).join(' + ');
       rows+='<div class="li"><div style="flex:1">'+
-        '<div class="mn">'+_tarlaGrupla(k.tarlalar||[k.tarla||'?'])+'</div>'+
+        '<div class="mn">'+_tarlaGrupla(k.tarlalar||[k.tarla||'?'])+(_donum>0?' <span style="font-size:11px;color:#888;font-weight:400">'+_donum+'dön</span>':'')+'</div>'+
         '<div class="sb">'+d+(il?' - '+il:'')+(parseFloat(k.su||0)>0?' | '+Math.round(parseFloat(k.su||0))+'lt':'')+'</div>'+
+        (_ilacMiktarStr?'<div style="font-size:11px;color:#555;margin-top:3px">'+_ilacMiktarStr+'</div>':'')+
         (k.foto?'<img src="'+k.foto+'" style="width:100%;border-radius:8px;margin-top:6px;max-height:80px;object-fit:cover">':'')+
         '</div>'+
         '<div style="display:flex;flex-direction:column;gap:4px;margin-left:8px;flex-shrink:0">'
@@ -1251,7 +1333,7 @@ function yI(idx){
     '<div style="font-size:12px;font-weight:700;color:#27ae60;margin-bottom:8px">Su & Doz Hesaplama</div>'+
     '<div class="fr2">'+
       '<div class="fr"><label>Donume Su (lt)</label><input class="fi" type="number" id="i_donumsu" value="'+(k.donumSu||'')+'" placeholder="lt/donum" oninput="iHDS()"></div>'+
-      '<div class="fr"><label>Toplam Su (lt)</label><input class="fi" type="number" id="i_topsu" value="'+(k.su||'')+'" placeholder="toplam lt" oninput="iHTS()"></div>'+
+      '<div class="fr"><label>Toplam Su (lt)</label><input class="fi" type="number" id="i_topsu" value="'+(k.suGirilen||k.su||'')+'" placeholder="toplam lt" oninput="iHTS()"></div>'+
     '</div>'+
     '<div style="font-size:11px;color:#888;margin-bottom:8px">Birini girin, digeri otomatik hesaplanir (tarla donumu baz alinir)</div>'+
 
@@ -1534,10 +1616,27 @@ function kI(){
   if(EI>=0){
     if(window._editGrupId&&window._editGrupIndeksler&&window._editGrupIndeksler.length>1){
       var _tarih2=gv('i0'),_not2=gv('i4');
+      // Toplam dönüm hesapla
+      var _topDonum2=0;
       window._editGrupIndeksler.forEach(function(idx){
         var mk=V.ilac.kayitlar[idx]; if(!mk)return;
+        var tObj=null;var _tl=V.tarlalar||[];
+        for(var i=0;i<_tl.length;i++){if(_tl[i].ad===(mk.tarla||'')){tObj=_tl[i];break;}}
+        _topDonum2+=tObj?parseFloat(tObj.donum)||0:0;
+      });
+      window._editGrupIndeksler.forEach(function(idx){
+        var mk=V.ilac.kayitlar[idx]; if(!mk)return;
+        var tObj=null;var _tl=V.tarlalar||[];
+        for(var i=0;i<_tl.length;i++){if(_tl[i].ad===(mk.tarla||'')){tObj=_tl[i];break;}}
+        var _dn=tObj?parseFloat(tObj.donum)||0:0;
+        var _suTarla=topSu;
+        if(donSu>0&&_dn>0){
+          _suTarla=donSu*_dn;
+        } else if(topSu>0&&_topDonum2>0&&_dn>0){
+          _suTarla=Math.round(topSu*_dn/_topDonum2*10)/10;
+        }
         mk.tarih=_tarih2; mk.ilaclar=il; mk.not=_not2;
-        mk.su=topSu; mk.donumSu=donSu; mk.doz100=d100; mk.dozTon=dton;
+        mk.su=_suTarla; mk.suGirilen=topSu; mk.donumSu=donSu; mk.doz100=d100; mk.dozTon=dton;
       });
       window._editGrupId=null; window._editGrupIndeksler=null;
     } else {
@@ -1546,8 +1645,7 @@ function kI(){
     }
   } else {
     // Yeni kayıt - seçilen her tarla için ayrı kayıt
-    var gid=uid(); // Aynı anda atılan kayıtlar için ortak ID
-    // Toplam dönüm hesapla (su dağıtımı için)
+    var gid=uid();
     var topTumDonum=0;
     seciliTarlalar.forEach(function(tarlaAd){
       (V.tarlalar||[]).forEach(function(t){if(t.ad===tarlaAd)topTumDonum+=parseFloat(t.donum)||0;});
@@ -1556,16 +1654,17 @@ function kI(){
       var tarlaObj=null;
       (V.tarlalar||[]).forEach(function(t){if(t.ad===tarlaAd)tarlaObj=t;});
       var dn=tarlaObj?parseFloat(tarlaObj.donum)||0:0;
-      // Su dönüm oranına göre dağıt
+      // topSu = kullanıcının girdiği TOPLAM su
+      // dönüme göre paylaştır
       var topSuTarla=0;
       if(donSu>0&&dn>0){
-        topSuTarla=donSu*dn;
+        topSuTarla=donSu*dn; // dönüm başı girilmişse
       } else if(topSu>0&&topTumDonum>0&&dn>0){
-        topSuTarla=topSu*dn/topTumDonum;
+        topSuTarla=Math.round(topSu*dn/topTumDonum*10)/10; // toplam girilmişse dönüme böl
       } else {
         topSuTarla=topSu;
       }
-      var k={id:uid(),groupId:gid,tarih:gv('i0'),tarlalar:[tarlaAd],tarla:tarlaAd,meyveTuru:tarlaObj?tarlaObj.meyve||'':'',ilaclar:il,not:gv('i4'),su:topSuTarla,suGirilen:Math.round(topSu/seciliTarlalar.length),donumSu:donSu,doz100:d100,dozTon:dton,foto:window._ilacFoto||_mevcutFoto};
+      var k={id:uid(),groupId:gid,tarih:gv('i0'),tarlalar:[tarlaAd],tarla:tarlaAd,meyveTuru:tarlaObj?tarlaObj.meyve||'':'',ilaclar:il,not:gv('i4'),su:topSuTarla,suGirilen:topSu,donumSu:donSu,doz100:d100,dozTon:dton,foto:window._ilacFoto||_mevcutFoto};
       V.ilac.kayitlar.push(k);
     });
   }
@@ -2127,30 +2226,62 @@ function _driveGetirSonuc(txt){
 }
 function driveKaydet(){
   if(!DRIVE_URL){toast('Once Drive Ayarlarindan Script URL girin!');driveAyarla();return;}
+  if(!window.Android){
+    // PWA'da Drive kaydetme CORS nedeniyle çalışmıyor
+    // no-cors ile gönder - yanıt okunamaz ama istek gider
+    _driveSyncGoster('bekle','Kaydediliyor');
+    var veri=_fotoSizKopyala(V);
+    fetch(DRIVE_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'save',payload:veri})
+    }).then(function(){
+      _driveSyncGoster('ok','Gonderildi');
+      toast('Drive\'a gonderildi (PWA modunda dogrulama yapılamıyor).');
+    }).catch(function(e){
+      _driveSyncGoster('hata','Hata');
+      toast('Drive hatasi: '+String(e));
+    });
+    return;
+  }
+  // APK: Kotlin bridge ile POST
   _driveSyncGoster('bekle','Kaydediliyor');
   var veri=_fotoSizKopyala(V);
-  var body=JSON.stringify({action:'save',payload:veri});
-  if(window.Android&&Android.httpPostAsync){
-    Android.httpPostAsync(DRIVE_URL,body,'_driveKaydetSonuc');
-  } else {
-    // PWA: fetch ile POST
-    fetch(DRIVE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:body})
-    .then(function(r){return r.json();})
-    .then(_driveKaydetSonuc)
-    .catch(function(e){_driveSyncGoster('hata','Hata');toast('Drive hatasi: '+String(e));});
-  }
+  Android.httpPostAsync(DRIVE_URL,JSON.stringify({action:'save',payload:veri}),'_driveKaydetSonuc');
 }
 function driveGetir(){
   if(!DRIVE_URL){toast('Once Drive Ayarlarindan Script URL girin!');driveAyarla();return;}
   _driveSyncGoster('bekle','Yukleniyor');
   toast('Drive\'dan yukleniyor...');
-  var url=DRIVE_URL+'?action=load';
   if(window.Android&&Android.httpGetAsync){
-    Android.httpGetAsync(url,'_driveGetirSonuc');
+    // APK: Kotlin bridge ile GET
+    Android.httpGetAsync(DRIVE_URL+'?action=load','_driveGetirSonuc');
   } else {
-    fetch(url).then(function(r){return r.json();})
-    .then(_driveGetirSonuc)
-    .catch(function(e){_driveSyncGoster('hata','Hata');toast('Drive hatasi: '+String(e));});
+    // PWA: JSONP ile GET
+    var cbName='_driveCb_'+Date.now();
+    var script=document.createElement('script');
+    var timer=setTimeout(function(){
+      delete window[cbName];
+      try{document.body.removeChild(script);}catch(e){}
+      _driveSyncGoster('hata','Hata');
+      toast('Drive: Zaman asimi. Script URL dogru mu?');
+    },15000);
+    window[cbName]=function(d){
+      clearTimeout(timer);
+      delete window[cbName];
+      try{document.body.removeChild(script);}catch(e){}
+      _driveGetirSonuc(d);
+    };
+    script.onerror=function(){
+      clearTimeout(timer);
+      delete window[cbName];
+      try{document.body.removeChild(script);}catch(e){}
+      _driveSyncGoster('hata','Hata');
+      toast('Drive: Script yuklenemedi.');
+    };
+    script.src=DRIVE_URL+'?callback='+cbName+'&action=load';
+    document.body.appendChild(script);
   }
 }
 function driveAyarla(){
@@ -3001,18 +3132,7 @@ function ilacPlan(){
   var _grupSu={};
   kayitlar.forEach(function(k){
     if(!k)return;
-    var su=0;
-    if(k.suGirilen!==undefined){
-      su=Math.round(parseFloat(k.suGirilen)||0);
-    } else if(k.groupId){
-      if(!_grupSu[k.groupId]){
-        var grupKayitlar=kayitlar.filter(function(x){return x&&x.groupId===k.groupId;});
-        _grupSu[k.groupId]=Math.round((parseFloat(k.su)||0)/Math.max(grupKayitlar.length,1));
-      }
-      su=_grupSu[k.groupId];
-    } else {
-      su=Math.round(parseFloat(k.su)||0);
-    }
+    var su=Math.round(parseFloat(k.su)||0);
     var il=k.ilaclar&&k.ilaclar.length?k.ilaclar:(k.ilac?[{ad:k.ilac,doz100:parseFloat(k.doz100)||0}]:[]);
     il.forEach(function(x){
       var etken=typeof x==='string'?x:((x&&x.etkens&&x.etkens.length)?x.etkens.join('+'): (x&&x.ad?x.ad:''));
