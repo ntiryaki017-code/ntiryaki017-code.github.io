@@ -1,9 +1,10 @@
-var CACHE_NAME = 'ciftci-takip-v2';
+var CACHE_NAME = 'ciftci-takip-v4';
 var URLS = [
-  'index.html',
-  'manifest.json',
-  'icon-192.png',
-  'icon-512.png'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 // Kurulum
@@ -31,24 +32,26 @@ self.addEventListener('activate', function(e) {
   self.clients.claim();
 });
 
-// Fetch - dış istekleri direkt geçir, local dosyaları cache'le
+// Fetch
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
 
-  // Dış API istekleri - cache'leme, direkt network
+  // Dis API istekleri - cache'leme, direkt network
   if (url.indexOf('script.google.com') >= 0 ||
       url.indexOf('jsonbin.io') >= 0 ||
       url.indexOf('googleapis.com') >= 0 ||
       url.indexOf('cdn.jsdelivr.net') >= 0) {
-    e.respondWith(fetch(e.request).catch(function() {
-      return new Response(JSON.stringify({status:'error',message:'Network error'}), {
-        headers: {'Content-Type': 'application/json'}
-      });
-    }));
+    e.respondWith(
+      fetch(e.request).catch(function() {
+        return new Response(JSON.stringify({ status: 'error', message: 'Network error' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
     return;
   }
 
-  // Local dosyalar - cache-first
+  // Local dosyalar - cache-first, network fallback
   e.respondWith(
     caches.match(e.request).then(function(cached) {
       if (cached) return cached;
@@ -61,9 +64,11 @@ self.addEventListener('fetch', function(e) {
         }
         return response;
       }).catch(function() {
-        return caches.match('index.html');
+        // Sadece navigasyon isteklerinde index.html'e don
+        if (e.request.mode === 'navigate') {
+          return caches.match('/index.html');
+        }
       });
     })
   );
 });
-
