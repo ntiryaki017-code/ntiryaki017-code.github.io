@@ -73,7 +73,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4f0;
   <p id="sub" style="font-size:11px;opacity:0.8;margin-top:2px;text-align:center">Yukleniyor...</p>
 </div>
 <div class="cnt" id="cnt"></div>
-<div id="anaSayfaBar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:2px solid #e0e0e0;box-shadow:0 -2px 8px rgba(0,0,0,0.08)"><button onclick="G(0)" style="width:100%;padding:13px;border-radius:10px;border:none;background:#27ae60;color:#fff;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent">🏠 Ana Sayfa</button></div>
+<div id="anaSayfaBar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:2px solid #e0e0e0;box-shadow:0 -2px 8px rgba(0,0,0,0.08)"><button id="anaSayfaBarBtn" onclick="G(0)" style="width:100%;padding:13px;border-radius:10px;border:none;background:#27ae60;color:#fff;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent">🏠 Ana Sayfa</button></div>
 <nav class="nav">
   <a href="javascript:G(0)" id="nb0" class="on"><span class="ic">&#128202;</span>Ozet</a>
   <a href="javascript:G(1)" id="nb1"><span class="ic">&#127806;</span>Hasat</a>
@@ -328,17 +328,25 @@ function G(p){PG=p;for(var i=0;i<9;i++){var b=document.getElementById('nb'+i);if
   var fab=document.getElementById('fab');
   var geriBtn=document.getElementById('geriBtn');
   var anaBar=document.getElementById('anaSayfaBar');
+  var anaBarBtn=document.getElementById('anaSayfaBarBtn');
   if(HIZLI_ERISIM){
+    if(nav)nav.style.display='none';
+    if(fab)fab.style.display=(p===0||p===6||p===8?'none':'flex');
     if(p===0){
-      if(nav)nav.style.display='none';
-      if(fab)fab.style.display='none';
+      // Ana sayfa (hizli erisim butonlari) - geri yok, altta Ozet
       if(geriBtn)geriBtn.style.display='none';
-      if(anaBar)anaBar.style.display='none';
-    } else {
-      if(nav)nav.style.display='none';
-      if(fab)fab.style.display=(p===0||p===6||p===8?'none':'flex');
+      if(anaBar)anaBar.style.display='block';
+      if(anaBarBtn){anaBarBtn.textContent='📈 Ozet';anaBarBtn.onclick=function(){_hizliOzetGoster();};}
+    } else if(p===-1){
+      // Ozet sayfasi - geri var, altta Ana Sayfa
       if(geriBtn)geriBtn.style.display='block';
       if(anaBar)anaBar.style.display='block';
+      if(anaBarBtn){anaBarBtn.textContent='🏠 Ana Sayfa';anaBarBtn.onclick=function(){G(0);};}
+    } else {
+      // Diger sayfalar - geri var, altta Ana Sayfa
+      if(geriBtn)geriBtn.style.display='block';
+      if(anaBar)anaBar.style.display='block';
+      if(anaBarBtn){anaBarBtn.textContent='🏠 Ana Sayfa';anaBarBtn.onclick=function(){G(0);};}
     }
   } else {
     if(nav)nav.style.display='';
@@ -385,6 +393,22 @@ function getToplam(x){
 
 // OZET & ANALZ
 
+
+function _hizliOzetGoster(){
+  PG=-1;
+  var geriBtn=document.getElementById('geriBtn');
+  var anaBar=document.getElementById('anaSayfaBar');
+  var anaBarBtn=document.getElementById('anaSayfaBarBtn');
+  if(geriBtn)geriBtn.style.display='block';
+  if(anaBar)anaBar.style.display='block';
+  if(anaBarBtn){anaBarBtn.textContent='🏠 Ana Sayfa';anaBarBtn.onclick=function(){G(0);};}
+  var cnt=document.getElementById('cnt');
+  if(cnt)cnt.style.paddingBottom='80px';
+  var _he=HIZLI_ERISIM;
+  HIZLI_ERISIM=false;
+  p0();
+  HIZLI_ERISIM=_he;
+}
 function pHizliErisim(){
   document.getElementById('sub').textContent='Hizli Erisim';
   var cnt=document.getElementById('cnt');
@@ -428,7 +452,9 @@ function hizliErisimToggle(){
 
 function p0(){
   if(HIZLI_ERISIM){pHizliErisim();return;}
-  try{
+  _p0Analiz();
+}
+function _p0Analiz(){try{
   document.getElementById('sub').textContent='Analiz yukleniyor...';
   var h=V.hasatKayitlari||[],g=V.giderler||[],tl=V.tarlalar||[];
   var iv=V.isci||{},devamlar=iv.devamlar||[],isciList=iv.isciler||[];
