@@ -50,8 +50,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4f0;
 </style>
 </head>
 <body>
-<div class="hdr" style="position:relative"><div style="text-align:center"><select id="yilSec" onchange="yilDegistir(this.value)" style="background:rgba(0,0,0,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700;cursor:pointer;position:absolute;top:14px;left:50%;transform:translateX(-50%)"></select></div><h1>Ciftci Takip <span style="font-size:11px;opacity:0.7;font-weight:400">v4.0</span></h1><div style="position:absolute;top:8px;right:10px;display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span id="offlineBar" style="display:none;background:rgba(220,50,50,0.9);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700">&#10005; Cevrimdisi</span><button onclick="aramaAc()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;-webkit-tap-highlight-color:transparent">&#128269;</button></div><p id="sub" style="font-size:11px;opacity:0.8;margin-top:2px">Yukleniyor...</p></div>
+<div class="hdr" style="position:relative;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;min-height:36px">
+    <!-- Sol: Geri butonu -->
+    <div style="width:40px;flex-shrink:0">
+      <button id="geriBtn" onclick="G(0)" style="display:none;background:rgba(255,255,255,0.25);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:17px;cursor:pointer;-webkit-tap-highlight-color:transparent">&#8592;</button>
+    </div>
+    <!-- Orta: Baslik -->
+    <div style="flex:1;text-align:center">
+      <h1 style="font-size:17px;font-weight:700">Ciftci Takip <span style="font-size:11px;opacity:0.7;font-weight:400">v4.0</span></h1>
+    </div>
+    <!-- Sag: Offline + Arama -->
+    <div style="width:40px;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <span id="offlineBar" style="display:none;background:rgba(220,50,50,0.9);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700">&#10005;</span>
+      <button onclick="aramaAc()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;-webkit-tap-highlight-color:transparent">&#128269;</button>
+    </div>
+  </div>
+  <!-- Alt satir: Yil secici + sub -->
+  <div style="text-align:center;margin-top:4px">
+    <select id="yilSec" onchange="yilDegistir(this.value)" style="background:rgba(0,0,0,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700;cursor:pointer"></select>
+  </div>
+  <p id="sub" style="font-size:11px;opacity:0.8;margin-top:2px;text-align:center">Yukleniyor...</p>
+</div>
 <div class="cnt" id="cnt"></div>
+<div id="anaSayfaBar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:2px solid #e0e0e0;box-shadow:0 -2px 8px rgba(0,0,0,0.08)"><button onclick="G(0)" style="width:100%;padding:13px;border-radius:10px;border:none;background:#27ae60;color:#fff;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent">🏠 Ana Sayfa</button></div>
 <nav class="nav">
   <a href="javascript:G(0)" id="nb0" class="on"><span class="ic">&#128202;</span>Ozet</a>
   <a href="javascript:G(1)" id="nb1"><span class="ic">&#127806;</span>Hasat</a>
@@ -70,6 +92,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4f0;
 <script>
 var V={};
 var PG=0,EI=-1,BIN_KEY='',BIN_ID='',DRIVE_URL='',SHEETS_URL='',OTOKAYT=false,OTOKAYT_API=false,OTOKAYT_DRIVE=false,_otoApiTimer=null,_otoDriveTimer=null,KASA_DARA=parseFloat(localStorage.getItem('kasaDara'))||0.4,AROMA_DARA=parseFloat(localStorage.getItem('aromaDara'))||3;
+var HIZLI_ERISIM=localStorage.getItem('hizliErisim')==='1';
 var _ilacFiltreTarla='',_ilacFiltreIlac='';
 var _hasatFiltreTarla='',_hasatFiltreMeyve='';
 var AKTIF_YIL=new Date().getFullYear().toString();
@@ -140,6 +163,10 @@ try{if(V.bulutAyar){
 // Açılışta API key/Bin ID'yi Android'den al (koda gömülü)
 try{if(window.Android&&Android.getApiKey){var _ak=Android.getApiKey();var _bi=Android.getBinId();if(_ak)BIN_KEY=_ak;if(_bi)BIN_ID=_bi;}}catch(e){}
 try{setTimeout(function(){otoBulutKontrol();},4000);}catch(e){}
+try{if(HIZLI_ERISIM){
+  var _nav=document.querySelector('nav.nav');if(_nav)_nav.style.display='none';
+  var _anaBar=document.getElementById('anaSayfaBar');if(_anaBar)_anaBar.style.display='none';
+}}catch(e){}
 
 try{if(V.ozelIlaclar&&V.ozelIlaclar.length){V.ozelIlaclar.forEach(function(x){if(ILACLAR.indexOf(x)<0)ILACLAR.push(x);});ILACLAR.sort();}}catch(e){}
 
@@ -296,8 +323,38 @@ function yeniYilKaydet(){
   sv();
   toast(yil+' yili baslatildi!');
 }
-function G(p){PG=p;for(var i=0;i<9;i++){var b=document.getElementById('nb'+i);if(b)b.className=(i===p?'on':'');}document.getElementById('fab').style.display=(p===0||p===6||p===8?'none':'flex');R();}
-function R(){yilSecGuncelle();try{if(PG===0)p0();else if(PG===1)p1();else if(PG===2)p2();else if(PG===3)p3();else if(PG===4)p4();else if(PG===5)p5();else if(PG===6)p6();else if(PG===7)p7();else if(PG===8)p8();}catch(e){var em=e.message||String(e);document.getElementById('cnt').innerHTML='<div class="card" style="padding:20px"><p style="color:red;font-weight:700">Sayfa Hatasi (PG='+PG+'):</p><p style="color:red;font-size:12px;word-break:break-all">'+em+'</p></div>';document.getElementById('sub').textContent='HATA';}}
+function G(p){PG=p;for(var i=0;i<9;i++){var b=document.getElementById('nb'+i);if(b)b.className=(i===p?'on':'');}
+  var nav=document.querySelector('nav.nav');
+  var fab=document.getElementById('fab');
+  var geriBtn=document.getElementById('geriBtn');
+  var anaBar=document.getElementById('anaSayfaBar');
+  if(HIZLI_ERISIM){
+    if(p===0){
+      if(nav)nav.style.display='none';
+      if(fab)fab.style.display='none';
+      if(geriBtn)geriBtn.style.display='none';
+      if(anaBar)anaBar.style.display='none';
+    } else {
+      if(nav)nav.style.display='none';
+      if(fab)fab.style.display=(p===0||p===6||p===8?'none':'flex');
+      if(geriBtn)geriBtn.style.display='block';
+      if(anaBar)anaBar.style.display='block';
+    }
+  } else {
+    if(nav)nav.style.display='';
+    if(fab)fab.style.display=(p===0||p===6||p===8?'none':'flex');
+    if(geriBtn)geriBtn.style.display='none';
+    if(anaBar)anaBar.style.display='none';
+  }
+  R();}
+function R(){
+  var cnt=document.getElementById('cnt');
+  if(cnt){
+    if(HIZLI_ERISIM&&PG!==0) cnt.style.paddingBottom='80px';
+    else if(!HIZLI_ERISIM) cnt.style.paddingBottom='';
+    else cnt.style.paddingBottom='12px';
+  }
+  yilSecGuncelle();try{if(PG===0)p0();else if(PG===1)p1();else if(PG===2)p2();else if(PG===3)p3();else if(PG===4)p4();else if(PG===5)p5();else if(PG===6)p6();else if(PG===7)p7();else if(PG===8)p8();}catch(e){var em=e.message||String(e);document.getElementById('cnt').innerHTML='<div class="card" style="padding:20px"><p style="color:red;font-weight:700">Sayfa Hatasi (PG='+PG+'):</p><p style="color:red;font-size:12px;word-break:break-all">'+em+'</p></div>';document.getElementById('sub').textContent='HATA';}}
 function FC(){
   if(PG===1){
     OM('<h2>Hasat Ekle</h2>'
@@ -327,7 +384,51 @@ function getToplam(x){
 }
 
 // OZET & ANALZ
-function p0(){try{
+
+function pHizliErisim(){
+  document.getElementById('sub').textContent='Hizli Erisim';
+  var cnt=document.getElementById('cnt');
+  if(cnt)cnt.style.paddingBottom='12px';
+  var butonlar=[
+    {pg:1,ikon:'🌾',ad:'Hasat',renk:'#27ae60'},
+    {pg:2,ikon:'💸',ad:'Gider',renk:'#e74c3c'},
+    {pg:3,ikon:'👷',ad:'Isci',renk:'#2980b9'},
+    {pg:4,ikon:'🧪',ad:'Ilac',renk:'#8e44ad'},
+    {pg:5,ikon:'🌿',ad:'Tarla',renk:'#16a085'},
+    {pg:7,ikon:'🌱',ad:'Gubre',renk:'#e67e22'},
+    {pg:8,ikon:'📊',ad:'Rapor',renk:'#7f8c8d'},
+    {pg:6,ikon:'⚙️',ad:'Ayarlar',renk:'#555'}
+  ];
+  var html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:8px 0">';
+  butonlar.forEach(function(b){
+    html+='<button onclick="G('+b.pg+')" style="'+
+      'background:'+b.renk+';color:#fff;border:none;border-radius:16px;'+
+      'padding:28px 10px;font-size:32px;font-weight:700;cursor:pointer;'+
+      'box-shadow:0 4px 12px rgba(0,0,0,0.15);'+
+      'display:flex;flex-direction:column;align-items:center;gap:8px;'+
+      '-webkit-tap-highlight-color:transparent">'+
+      '<span style="font-size:36px">'+b.ikon+'</span>'+
+      '<span style="font-size:15px;font-weight:700">'+b.ad+'</span>'+
+      '</button>';
+  });
+  html+='</div>';
+  document.getElementById('cnt').innerHTML=html;
+}
+
+function hizliErisimToggle(){
+  HIZLI_ERISIM=!HIZLI_ERISIM;
+  try{localStorage.setItem('hizliErisim',HIZLI_ERISIM?'1':'0');}catch(e){}
+  var sw=document.getElementById('hizliErisimSwitch');
+  if(sw){sw.style.background=HIZLI_ERISIM?'#27ae60':'#ccc';var k=sw.children[0];if(k)k.style.left=HIZLI_ERISIM?'23px':'3px';}
+  var nav=document.querySelector('nav.nav');
+  if(nav)nav.style.display=HIZLI_ERISIM?'none':'';
+  toast(HIZLI_ERISIM?'Hizli Erisim ACIK':'Hizli Erisim KAPALI');
+  G(0);
+}
+
+function p0(){
+  if(HIZLI_ERISIM){pHizliErisim();return;}
+  try{
   document.getElementById('sub').textContent='Analiz yukleniyor...';
   var h=V.hasatKayitlari||[],g=V.giderler||[],tl=V.tarlalar||[];
   var iv=V.isci||{},devamlar=iv.devamlar||[],isciList=iv.isciler||[];
@@ -888,8 +989,7 @@ function yG(idx){EI=idx===undefined?-1:idx;var gx=EI>=0?(V.giderler||[])[EI]:{ta
 function kG(){var ac=gv('g2'),tu=+gv('g3');if(!ac||!tu){toast('Aciklama ve tutar gerekli');return;}var gx={id:EI>=0?((V.giderler||[])[EI]||{}).id||uid():uid(),tarih:gv('g0'),kategori:gv('g1'),aciklama:ac,tutar:tu,not:gv('g4')};if(!V.giderler)V.giderler=[];if(EI>=0)V.giderler[EI]=gx;else V.giderler.push(gx);sv();CM();R();}
 
 // ISCI
-function p3(){document.getElementById('sub').textContent='Isci Takip';var iv=V.isci||{},isc=iv.isciler||[],dev=iv.devamlar||[],od=iv.cavusOdemeleri||[];var yov=iv.varsayilanYovmiye||500;var tH=dev.reduce(function(s,d){return s+Number(d.uygulanenUcret||0);},0);var tO=od.reduce(function(s,o){return s+Number(o.tutar||0);},0);var kal=tH-tO;var dr=dev.slice().reverse().map(function(d){var ri=dev.indexOf(d);var w=isc.filter(function(i){return i.id===d.isciId;})[0]||{ad:'?'};var t=d.tarih?new Date(d.tarih).toLocaleDateString('tr-TR'):'';return '<div class="li" onclick="yDevDuz('+ri+')"><div><div class="mn">'+w.ad+'</div><div class="sb">'+t+'</div></div><div class="rt"><div class="at">TL '+f(d.uygulanenUcret)+'</div><div style="font-size:11px;color:#27ae60">duzenle</div></div></div>';}).join('');var or=od.slice().reverse().slice(0,5).map(function(o){var t=o.tarih?new Date(o.tarih).toLocaleDateString('tr-TR'):'';return '<div class="li"><div><div class="mn">TL '+f(o.tutar)+'</div><div class="sb">'+t+(o.not?' - '+o.not:'')+'</div></div></div>';}).join('');document.getElementById('cnt').innerHTML='<div class="mg"><div class="mc"><div class="l">Toplam Hakedis</div><div class="v" style="color:#2980b9">TL '+f(tH)+'</div></div><div class="mc"><div class="l">Odenen</div><div class="v" style="color:#e67e22">TL '+f(tO)+'</div></div><div class="mc fc"><div class="l">'+(kal<=0?'Borc Yok':'Kalan Borc')+'</div><div class="v" style="color:'+(kal<=0?'#27ae60':'#e74c3c')+'">TL '+f(Math.abs(kal))+'</div></div></div><div class="card"><div class="sc2"><h2>Gunluk Kayit</h2><button class="ab" onclick="yD()">+ Ekle</button></div>'+(dr||'<div class="em">Kayit yok</div>')+'</div><div class="card"><div class="sc2"><h2>Cavus Odemeleri</h2><button class="ab" onclick="yCO()">+ Odeme</button></div>'+(or||'<div class="em">Odeme yok</div>')+'</div><div class="card"><div class="sc2"><h2>Isciler ('+isc.length+')</h2><button class="ab" onclick="yIs()">+ Isci</button></div>'+isc.map(function(w){return '<div class="li"><div><div class="mn">'+w.ad+'</div><div class="sb">TL '+f(w.ozelYovmiye||yov)+'/gun</div></div><span style="color:'+(w.aktifMi?'#27ae60':'#bbb')+'">'+(w.aktifMi?'Aktif':'Pasif')+'</span></div>';}).join('')+(isc.length?'':'<div class="em">Isci eklenmemis</div>')+'</div>';}
-function yIs(){OM('<h2>Yeni Isci</h2><div class="fr"><label>Ad Soyad</label><input class="fi" type="text" id="w0"></div><div class="fr"><label>Yovmiye TL</label><input class="fi" type="number" id="w1" placeholder="'+(((V.isci&&V.isci.varsayilanYovmiye)||500))+'"></div><button class="btn bg" onclick="kIs()">Kaydet</button><button class="btn bk" onclick="CM()">Iptal</button>');}
+function p3(){document.getElementById('sub').textContent='Isci Takip';var iv=V.isci||{},isc=iv.isciler||[],dev=iv.devamlar||[],od=iv.cavusOdemeleri||[];var yov=iv.varsayilanYovmiye||500;var tH=dev.reduce(function(s,d){return s+Number(d.uygulanenUcret||0);},0);var tO=od.reduce(function(s,o){return s+Number(o.tutar||0);},0);var kal=tH-tO;var dr=dev.slice().reverse().map(function(d){var ri=dev.indexOf(d);var w=isc.filter(function(i){return i.id===d.isciId;})[0]||{ad:'?'};var t=d.tarih?new Date(d.tarih).toLocaleDateString('tr-TR'):'';return '<div class="li" onclick="yDevDuz('+ri+')"><div><div class="mn">'+w.ad+'</div><div class="sb">'+t+'</div></div><div class="rt"><div class="at">TL '+f(d.uygulanenUcret)+'</div><div style="font-size:11px;color:#27ae60">duzenle</div></div></div>';}).join('');var or=od.slice().reverse().slice(0,5).map(function(o){var t=o.tarih?new Date(o.tarih).toLocaleDateString('tr-TR'):'';return '<div class="li"><div><div class="mn">TL '+f(o.tutar)+'</div><div class="sb">'+t+(o.not?' - '+o.not:'')+'</div></div></div>';}).join('');document.getElementById('cnt').innerHTML='<div class="mg"><div class="mc"><div class="l">Toplam Hakedis</div><div class="v" style="color:#2980b9">TL '+f(tH)+'</div></div><div class="mc"><div class="l">Odenen</div><div class="v" style="color:#e67e22">TL '+f(tO)+'</div></div><div class="mc fc"><div class="l">'+(kal<=0?'Borc Yok':'Kalan Borc')+'</div><div class="v" style="color:'+(kal<=0?'#27ae60':'#e74c3c')+'">TL '+f(Math.abs(kal))+'</div></div></div><div class="card"><div class="sc2"><h2>Gunluk Kayit</h2><button class="ab" onclick="yD()">+ Ekle</button></div>'+(dr||'<div class="em">Kayit yok</div>')+'</div><div class="card"><div class="sc2"><h2>Cavus Odemeleri</h2><button class="ab" onclick="yCO()">+ Odeme</button></div>'+(or||'<div class="em">Odeme yok</div>')+'</div><div class="card"><div class="sc2"><h2>Isciler ('+isc.length+')</h2><button class="ab" onclick="yIs()">+ Isci</button></div>'+isc.map(function(w){return '<div class="li"><div><div class="mn">'+w.ad+'</div><div class="sb">TL '+f(w.ozelYovmiye||yov)+'/gun</div></div><span style="color:'+(w.aktifMi?'#27ae60':'#bbb')+'">'+(w.aktifMi?'Aktif':'Pasif')+'</span></div>';}).join('')+(isc.length?'':'<div class="em">Isci eklenmemis</div>')+'</div>';}function yIs(){OM('<h2>Yeni Isci</h2><div class="fr"><label>Ad Soyad</label><input class="fi" type="text" id="w0"></div><div class="fr"><label>Yovmiye TL</label><input class="fi" type="number" id="w1" placeholder="'+(((V.isci&&V.isci.varsayilanYovmiye)||500))+'"></div><button class="btn bg" onclick="kIs()">Kaydet</button><button class="btn bk" onclick="CM()">Iptal</button>');}
 function kIs(){var ad=gv('w0').trim();if(!ad){toast('Ad girin');return;}if(!V.isci)V.isci={};if(!V.isci.isciler)V.isci.isciler=[];var cak=(V.isci.isciler).filter(function(w){return w.ad.toLowerCase()===ad.toLowerCase();});if(cak.length){toast('Bu isimde isci zaten kayitli!');return;}V.isci.isciler.push({id:uid(),ad:ad,ozelYovmiye:gv('w1')?+gv('w1'):null,aktifMi:true});sv();CM();R();}
 function yD(){var iv=V.isci||{};var ak=(iv.isciler||[]).filter(function(i){return i.aktifMi;});if(!ak.length){toast('Once isci ekleyin');return;}var op=ak.map(function(w){return '<option value="'+w.id+'">'+w.ad+'</option>';}).join('');OM('<h2>Gunluk Devam</h2><div class="fr"><label>Tarih</label><input class="fi" type="date" id="d0" value="'+td()+'"></div><div class="fr"><label>Isciler</label><select class="fi" id="d1" multiple size="5" style="height:auto">'+op+'</select></div><button class="btn bg" onclick="kD()">Kaydet</button><button class="btn bk" onclick="CM()">Iptal</button>');}
 function kD(){var sel=document.getElementById('d1');var sc=[];for(var _si=0;_si<sel.options.length;_si++){if(sel.options[_si].selected)sc.push(sel.options[_si].value);};if(!sc.length){toast('Isci secin');return;}var t=gv('d0');if(!V.isci)V.isci={};if(!V.isci.devamlar)V.isci.devamlar=[];var iv=V.isci;sc.forEach(function(id){var _wf=(iv.isciler||[]).filter(function(i){return i.id===id;});var w=_wf.length?_wf[0]:null;iv.devamlar.push({isciId:id,tarih:t+'T00:00:00',uygulanenUcret:w&&w.ozelYovmiye||iv.varsayilanYovmiye||500});});sv();CM();R();}
@@ -1982,7 +2082,8 @@ function p6(){
 
     // ── Diğer
     +'<div class="card"><div class="ct">Diger</div>'
-    +'<button class="btn b2" onclick="ozelUrunYonet()" style="margin-bottom:8px">Ozel Urunleri Duzenle</button>'+'<button class="btn b2" onclick="kasaDaraAyarla()" style="margin-bottom:8px">Piyasa Dara ('+KASA_DARA+'kg)</button>'+'<button class="btn b2" onclick="aromaDaraAyarla()" style="margin-bottom:8px">Aroma Dara ('+AROMA_DARA+'kg)</button>'+'<button class="btn b2" onclick="yovmiyeAyarla()" style="margin-bottom:8px">Varsayilan Yovmiye</button>'
+    +'<div onclick="hizliErisimToggle()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f8f9fa;border-radius:10px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:transparent"><div><div style="font-weight:700;font-size:14px">Hizli Erisim Anasayfa</div><div style="font-size:11px;color:#888;margin-top:2px">Anasayfada kategori butonlari goster</div></div><div id="hizliErisimSwitch" style="width:44px;height:24px;border-radius:12px;position:relative;background:'+(HIZLI_ERISIM?'#27ae60':'#ccc')+';transition:background 0.3s;flex-shrink:0"><div style="position:absolute;top:2px;left:'+(HIZLI_ERISIM?'23px':'3px')+';width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left 0.3s"></div></div></div>'
+    +'<button class="btn b2" onclick="ozelUrunYonet()"  style="margin-bottom:8px">Ozel Urunleri Duzenle</button>'+'<button class="btn b2" onclick="kasaDaraAyarla()" style="margin-bottom:8px">Piyasa Dara ('+KASA_DARA+'kg)</button>'+'<button class="btn b2" onclick="aromaDaraAyarla()" style="margin-bottom:8px">Aroma Dara ('+AROMA_DARA+'kg)</button>'+'<button class="btn b2" onclick="yovmiyeAyarla()" style="margin-bottom:8px">Varsayilan Yovmiye</button>'
     +'<button class="btn br" onclick="buYiliSil()">Bu Yilin Kayitlarini Sil</button>'
     +'</div>'
 
