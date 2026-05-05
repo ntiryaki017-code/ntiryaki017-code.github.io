@@ -94,6 +94,8 @@ var V={};
 var PG=0,EI=-1,BIN_KEY='',BIN_ID='',DRIVE_URL='',SHEETS_URL='',OTOKAYT=false,OTOKAYT_API=false,OTOKAYT_DRIVE=false,_otoApiTimer=null,_otoDriveTimer=null,KASA_DARA=parseFloat(localStorage.getItem('kasaDara'))||0.4,AROMA_DARA=parseFloat(localStorage.getItem('aromaDara'))||3;
 var HIZLI_ERISIM=localStorage.getItem('hizliErisim')==='1';
 var FB_API_KEY='AIzaSyB3bYCCFm62aVsMSD5nMfd52b4CqXGiZWo';
+var _fbAccessToken='';
+try{_fbAccessToken=localStorage.getItem('fbAccessToken')||'';}catch(e){}
 var FB_DB_URL='https://ciftcitakip-6d403-default-rtdb.europe-west1.firebasedatabase.app';
 var FB_PROJECT='ciftcitakip-6d403';
 var OTOKAYT_FB=false,_otoFbTimer=null;
@@ -2116,8 +2118,10 @@ function p6(){
     +'<button id="fbGirisBtn" class="btn bg" onclick="_fbInit();fbGiris()" style="margin-bottom:8px;display:none">&#128100; Google ile Giris Yap</button>'
     +'<button id="fbCikisBtn" class="btn b5" onclick="fbCikis()" style="margin-bottom:8px;display:none">&#128100; Cikis Yap</button>'
     +'<div id="fbDurumKart" style="border-radius:10px;padding:11px 14px;margin-bottom:8px;background:#f5f5f5"><div style="font-size:11px;color:#999;margin-bottom:4px">Firebase Kayit Durumu</div><div id="fbDurumMetin" style="font-size:14px;font-weight:700;color:#888">&#9679; Bilinmiyor</div><div id="fbDurumZaman" style="font-size:10px;color:#bbb;margin-top:3px"></div></div>'
-    +'<button id="fbKaydetBtn" class="btn bg" onclick="fbKaydet()" style="margin-bottom:8px;display:none">&#128293; Firebase Kaydet</button>'
-    +'<button id="fbYukleBtn" class="btn b2" onclick="fbGetir()" style="margin-bottom:8px;display:none">&#128293; Firebase Yukle</button>'
+    +'<button id="fbKaydetBtn" class="btn bg" onclick="kisiselDriveKaydet()" style="margin-bottom:8px;display:none">&#128196; Kisisel Drive Kaydet</button>'
+    +'<button id="fbYukleBtn" class="btn b2" onclick="kisiselDriveGetir()" style="margin-bottom:8px;display:none">&#128196; Kisisel Drive Yukle</button>'
+    +'<button id="fbFbKaydetBtn" class="btn bg" onclick="fbKaydet()" style="margin-bottom:8px;display:none;background:#e67e22">&#128293; Firebase DB Kaydet</button>'
+    +'<button id="fbFbYukleBtn" class="btn b2" onclick="fbGetir()" style="margin-bottom:8px;display:none;background:#e67e22">&#128293; Firebase DB Yukle</button>'
     +'<button class="btn b4" onclick="fbAyarla()" style="margin-bottom:8px">&#9881; Firebase Ayarlari</button>'
     +'<div onclick="otoFbToggle()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f8f9fa;border-radius:10px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:transparent"><div><div style="font-weight:700;font-size:14px">Otomatik Firebase Kayit</div><div style="font-size:11px;color:#888;margin-top:2px">Her degisiklikte Firebase kaydet</div></div><div id="otoFbSwitch" style="width:44px;height:24px;border-radius:12px;position:relative;background:'+(OTOKAYT_FB?'#27ae60':'#ccc')+';transition:background 0.3s;flex-shrink:0"><div style="position:absolute;top:2px;left:'+(OTOKAYT_FB?'23px':'3px')+';width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left 0.3s"></div></div></div>'
     +'</div>'
@@ -2349,6 +2353,121 @@ function _driveGetirSonuc(txt){
 function _fbUrl(path){
   return FB_DB_URL+'/'+path+'.json?auth='+FB_API_KEY;
 }
+
+// ══ KİŞİSEL GOOGLE DRIVE (Firebase Auth token ile) ══════════════════════════
+var _DRIVE_FILE_NAME='CiftciTakip_Yedek.json';
+
+function _driveAuthHeader(){
+  // Once localStorage'dan token al
+  var token=_fbAccessToken;
+  if(!token){try{token=localStorage.getItem('fbAccessToken')||'';}catch(e){}}
+  return token;
+}
+
+function kisiselDriveKaydet(){
+  var token=_driveAuthHeader();
+  if(!token){
+    toast('Once Google ile giris yapin!');
+    return;
+  }
+  _fbSyncGoster('bekle','Drive Kaydediliyor');
+  var veri=JSON.stringify(_fotoSizKopyala(V));
+  var blob=new Blob([veri],{type:'application/json'});
+
+  // Once mevcut dosyayi ara
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27'+_DRIVE_FILE_NAME+'%27+and+trashed%3Dfalse&spaces=drive&fields=files(id,name)',{
+    headers:{'Authorization':'Bearer '+token}
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    var files=d.files||[];
+    if(files.length>0){
+      // Guncelle
+      var fileId=files[0].id;
+      return fetch('https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=media',{
+        method:'PATCH',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:veri
+      });
+    } else {
+      // Yeni olustur
+      var meta={name:_DRIVE_FILE_NAME,mimeType:'application/json'};
+      var boundary='ciftci_boundary';
+      var crlf='\r\n';
+      var body='--'+boundary+crlf+'Content-Type: application/json'+crlf+crlf+JSON.stringify(meta)+crlf+'--'+boundary+crlf+'Content-Type: application/json'+crlf+crlf+veri+crlf+'--'+boundary+'--';
+      return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'multipart/related; boundary='+boundary},
+        body:body
+      });
+    }
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(d.id){_fbSyncGoster('ok','Drive Kaydedildi');toast('Kisisel Drive kaydedildi!');}
+    else{_fbSyncGoster('hata','Hata');toast('Drive hatasi: '+(d.error&&d.error.message||'?'));}
+  }).catch(function(e){
+    _fbSyncGoster('hata','Hata');
+    toast('Drive hatasi: '+String(e));
+    // Token suresi dolmussa tekrar giris yap
+    if(String(e).indexOf('401')>=0||String(e).indexOf('auth')>=0){
+      _fbAccessToken='';
+      try{localStorage.removeItem('fbAccessToken');}catch(ex){}
+      toast('Oturum suresi doldu, tekrar giris yapin');
+    }
+  });
+}
+
+function kisiselDriveGetir(){
+  var token=_driveAuthHeader();
+  if(!token){
+    toast('Once Google ile giris yapin!');
+    return;
+  }
+  _fbSyncGoster('bekle','Drive Yukleniyor');
+  toast('Kisisel Drive yukleniyor...');
+
+  fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27'+_DRIVE_FILE_NAME+'%27+and+trashed%3Dfalse&spaces=drive&fields=files(id,name)',{
+    headers:{'Authorization':'Bearer '+token}
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    var files=d.files||[];
+    if(!files.length){
+      _fbSyncGoster('hata','Dosya Yok');
+      toast('Drive: Kayitli veri yok. Ilk kez kaydediliyor...');
+      kisiselDriveKaydet();
+      return;
+    }
+    var fileId=files[0].id;
+    return fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{
+      headers:{'Authorization':'Bearer '+token}
+    }).then(function(r){return r.json();});
+  }).then(function(d){
+    if(!d)return;
+    V=d;
+    if(!V.arsiv)V.arsiv={};
+    var _yil=AKTIF_YIL;
+    var _av=V.arsiv[_yil]||{};
+    V.hasatKayitlari=_av.hasatKayitlari||V.hasatKayitlari||[];
+    V.giderler=_av.giderler||V.giderler||[];
+    V.isci=_av.isci||V.isci||{};
+    V.ilac=_av.ilac||V.ilac||{kayitlar:[]};
+    V.tarlalar=_av.tarlalar||V.tarlalar||[];
+    V.gubre=_av.gubre||V.gubre||{kayitlar:[]};
+    if(window.Android)Android.saveData(JSON.stringify(V));
+    try{localStorage.setItem('ciftci_veri',JSON.stringify(V));}catch(e){}
+    _fbSyncGoster('ok','Drive Yuklendi');
+    toast('Kisisel Drive yuklendi!');
+    R();
+  }).catch(function(e){
+    _fbSyncGoster('hata','Hata');
+    toast('Drive hatasi: '+String(e));
+    if(String(e).indexOf('401')>=0){
+      _fbAccessToken='';
+      try{localStorage.removeItem('fbAccessToken');}catch(ex){}
+      toast('Oturum suresi doldu, tekrar giris yapin');
+    }
+  });
+}
+
 function fbKaydet(){
   if(!_fbInit()){toast('Firebase baslatılamadı');return;}
   if(!_fbUser){toast('Once Google ile giris yapin!');if(PG===6)_fbKullaniciBilgiGoster();return;}
@@ -3189,9 +3308,9 @@ function otoKaytToggle(tip){
       clearTimeout(_otoDriveTimer);
       _otoDriveTimer=setTimeout(function(){if(typeof driveKaydet==='function')driveKaydet();},5000);
     }
-    if(OTOKAYT_FB&&FB_API_KEY&&navigator.onLine){
+    if(OTOKAYT_FB&&_fbAccessToken&&navigator.onLine){
       clearTimeout(_otoFbTimer);
-      _otoFbTimer=setTimeout(function(){if(typeof fbKaydet==='function')fbKaydet();},4000);
+      _otoFbTimer=setTimeout(function(){if(typeof kisiselDriveKaydet==='function')kisiselDriveKaydet();},4000);
     }
   };
 })();
@@ -3643,6 +3762,10 @@ function _fbInit(){
     _fbDb=firebase.database(_fbApp);
     _fbAuth.onAuthStateChanged(function(user){
       _fbUser=user;
+      if(user){
+        // Token'i yenile
+        user.getIdToken().then(function(){});
+      }
       _fbKullaniciBilgiGoster();
     });
     return true;
@@ -3659,13 +3782,18 @@ function _fbInit(){
 function fbGiris(){
   if(!_fbInit()){toast('Firebase baslatılamadı');return;}
   var provider=new firebase.auth.GoogleAuthProvider();
+  // Drive izni ekle
+  provider.addScope('https://www.googleapis.com/auth/drive.appdata');
+  provider.addScope('https://www.googleapis.com/auth/drive.file');
   _fbAuth.signInWithPopup(provider)
     .then(function(result){
       _fbUser=result.user;
+      _fbAccessToken=result.credential&&result.credential.accessToken||'';
+      try{localStorage.setItem('fbAccessToken',_fbAccessToken);}catch(e){}
       toast('Hos geldin, '+(_fbUser.displayName||_fbUser.email)+'!');
       _fbKullaniciBilgiGoster();
       // Giris yapinca otomatik yukle
-      fbGetir();
+      kisiselDriveGetir();
     }).catch(function(e){
       toast('Giris hatasi: '+e.message);
     });
@@ -3694,6 +3822,10 @@ function _fbKullaniciBilgiGoster(){
     if(cikisBtn)cikisBtn.style.display='block';
     if(kaydetBtn)kaydetBtn.style.display='block';
     if(yukleBtn)yukleBtn.style.display='block';
+    var fbk=document.getElementById('fbFbKaydetBtn');
+    var fbyl=document.getElementById('fbFbYukleBtn');
+    if(fbk)fbk.style.display='block';
+    if(fbyl)fbyl.style.display='block';
   } else {
     el.innerHTML='<div style="font-size:12px;color:#888">Giris yapilmadi</div>';
     if(girisBtn)girisBtn.style.display='block';
