@@ -1054,6 +1054,7 @@ function p4(){
     '</div>'+
     '<div style="display:flex;gap:6px;margin-bottom:10px">'+
     '<button onclick="ilacExcelFiltreli()" style="flex:1;padding:8px;border-radius:8px;border:none;background:#27ae60;color:#fff;font-size:12px;font-weight:700;cursor:pointer">Excel Aktar</button>'+
+    '<button onclick="ilacDepoGoster()" style="padding:8px 10px;border-radius:8px;border:none;background:#16a085;color:#fff;font-size:12px;font-weight:700;cursor:pointer">&#128138; Depo</button>'+
     (_ilacFiltreTarla||_ilacFiltreIlac?'<button onclick="_ilacFiltreTarla=\'\';_ilacFiltreIlac=\'\';p4()" style="padding:8px 12px;border-radius:8px;border:none;background:#e74c3c;color:#fff;font-size:12px;font-weight:700;cursor:pointer">Filtreyi Temizle</button>':'')+
     '</div>';
 
@@ -1201,10 +1202,17 @@ function ilacSatiri(i,il){
       '</div>';
   }).join('');
 
+  var _depoKeys=Object.keys(ilacDepoAl());
   return '<div class="fr" id="ilacRow'+i+'" style="background:#f8f8f8;border-radius:10px;padding:10px;margin-bottom:8px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
     '<label style="margin:0;font-size:12px;color:#27ae60;font-weight:700">'+lbl+'</label>'+
     (i>0?'<button type="button" onclick="document.getElementById(\'ilacRow'+i+'\').remove()" style="padding:4px 10px;border-radius:6px;border:none;background:#e74c3c;color:#fff;cursor:pointer;font-size:12px">Kaldir</button>':'')+
+    '</div>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:3px">Barkod No (opsiyonel)</div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:8px">'+
+    '<input class="fi" type="text" id="ibk'+i+'" value="" placeholder="Barkod no..." style="font-size:13px;margin-bottom:0;flex:1" oninput="ilacBarkodDegisti('+i+')" list="barkodDepoList'+i+'">'+
+    '<datalist id="barkodDepoList'+i+'">'+_depoKeys.map(function(k){var d=ilacDepoAl()[k];return '<option value="'+k+'" label="'+(d.ticari||k)+'">';}).join('')+'</datalist>'+
+    '<button type="button" onclick="barkodTaraIlacPWA('+i+')" style="padding:10px 12px;border-radius:8px;border:none;background:#16a085;color:#fff;cursor:pointer;font-size:16px;flex-shrink:0" title="Barkod Oku">&#128247;</button>'+
     '</div>'+
     '<input class="fi" type="text" id="ilt'+i+'" value="'+ticari+'" autocomplete="off" placeholder="Ticari isim (opsiyonel)..." style="font-size:13px;margin-bottom:6px" oninput="ilacTicariDegisti('+i+')" list="ticariOneri'+i+'">'+
     '<datalist id="ticariOneri'+i+'">'+_ticariOneri('')+'</datalist>'+
@@ -1714,6 +1722,10 @@ function kI(){
       var doz2=parseFloat(document.getElementById('ild'+i)&&document.getElementById('ild'+i).value)||0;
       var ticEl=document.getElementById('ilt'+i);
       var ticAd=ticEl?ticEl.value.trim():'';
+      var barkodEl=document.getElementById('ibk'+i);
+      var barkodVal=barkodEl?barkodEl.value.trim():'';
+      // Barkod varsa depoya kaydet
+      if(barkodVal&&ticAd)ilacBarkodKaydetDepo(barkodVal,ticAd,'',doz2);
       // Tüm etken maddeleri topla
       var etkens=[];
       for(var ei=0;ei<20;ei++){
@@ -3041,6 +3053,263 @@ function p8() {
 
 
   document.getElementById('cnt').innerHTML=btns+ozetKart(sH,sG,sBaslik)+tarlaHtml+katHtml;
+}
+
+
+// ══ İLAÇ VERİ DEPOSU & BARKOD ═══════════════════════════════════════════════
+function ilacDepoAl(){
+  try{
+    var d=localStorage.getItem('ilacDepo');
+    return d?JSON.parse(d):{};
+  }catch(e){return {};}
+}
+function ilacDepoKaydet(depo){
+  try{
+    localStorage.setItem('ilacDepo',JSON.stringify(depo));
+    V._ilacDepo=depo;
+    try{localStorage.setItem('ciftci_veri',JSON.stringify(V));}catch(e){}
+  }catch(e){}
+}
+function ilacBarkodSorgula(barkod16){
+  if(!barkod16||barkod16.length<2)return null;
+  var key=barkod16.substring(0,16);
+  var depo=ilacDepoAl();
+  if(V._ilacDepo&&V._ilacDepo[key])return V._ilacDepo[key];
+  return depo[key]||null;
+}
+function ilacBarkodKaydetDepo(barkod16, ticari, etken, doz){
+  if(!barkod16||barkod16.length<2)return;
+  var key=barkod16.substring(0,16);
+  var depo=ilacDepoAl();
+  depo[key]={ticari:ticari||'',etken:etken||'',doz:doz||''};
+  ilacDepoKaydet(depo);
+}
+function ilacDepoGoster(){
+  var depo=ilacDepoAl();
+  var keys=Object.keys(depo);
+  var html='<h2>&#128138; Ilac Veri Deposu</h2>';
+  html+='<div style="background:#f0faf4;border:1px solid #27ae60;border-radius:10px;padding:12px;margin-bottom:12px">';
+  html+='<div style="font-weight:700;font-size:13px;color:#27ae60;margin-bottom:8px">+ Yeni Kayit Ekle</div>';
+  html+='<input id="depoYeniBarkod" type="text" placeholder="Barkod No" class="fi" style="margin-bottom:6px;font-size:13px">';
+  html+='<input id="depoYeniTicari" type="text" placeholder="Ticari Isim" class="fi" style="margin-bottom:6px;font-size:13px">';
+  var etkenListesi=[];
+  try{var _es=localStorage.getItem('ilacEslestirme');if(_es){var _em=JSON.parse(_es);etkenListesi=Object.values(_em).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();}}catch(e){}
+  html+='<input id="depoYeniEtken" type="text" placeholder="Etken Madde" class="fi" style="margin-bottom:4px;font-size:13px" list="depoEtkenList">';
+  html+='<datalist id="depoEtkenList">'+(etkenListesi.map(function(e){return '<option value="'+e+'">';}).join(''))+'</datalist>';
+  html+='<input id="depoYeniDoz" type="number" placeholder="100 ltreye doz (ml, opsiyonel)" class="fi" style="margin-bottom:8px;font-size:13px" step="0.1">';
+  html+='<div style="display:flex;gap:6px">';
+  html+='<button class="btn b2" onclick="ilacDepoBarkodOkutPWA()" style="flex:1">&#128247; Kamera Barkod</button>';
+  html+='<button class="btn bg" onclick="ilacDepoYeniKaydet()" style="flex:1">Kaydet</button>';
+  html+='</div></div>';
+  if(!keys.length){
+    html+='<div style="color:#888;padding:12px;text-align:center">Kayit yok. Yukardaki formu kullanin.</div>';
+  } else {
+    html+='<div style="font-size:12px;color:#888;margin-bottom:8px">'+keys.length+' kayit</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:8px">';
+    keys.forEach(function(k){
+      var d=depo[k];
+      html+='<div style="background:#f8f9fa;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center">';
+      html+='<div style="flex:1"><div style="font-size:11px;color:#888;margin-bottom:2px">'+k+'</div>';
+      html+='<div style="font-weight:700;font-size:13px">'+(d.ticari||'(ticari yok)')+'</div>';
+      html+='<div style="font-size:12px;color:#555">'+(d.etken||'(etken yok)')+'</div>'+(d.doz?'<div style="font-size:11px;color:#27ae60">100 lt: '+d.doz+' ml</div>':'')+'</div>';
+      html+='<button onclick="ilacDepoSil(\''+k+'\')" style="background:#e74c3c;color:#fff;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;margin-left:8px">Sil</button>';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  html+='<div style="margin-top:12px;background:#f0f4ff;border:1px solid #3498db;border-radius:10px;padding:12px">';
+  html+='<div style="font-weight:700;font-size:13px;color:#2980b9;margin-bottom:8px">&#128247; Barkod Okut - Urun Bilgisi Gor</div>';
+  html+='<div id="barkodSorguSonuc" style="min-height:40px;font-size:13px;color:#555;margin-bottom:8px">Barkod okutun...</div>';
+  html+='<button class="btn b2" onclick="depoSorguBarkodOkutPWA()" style="margin-bottom:0">&#128247; Kamera ile Barkod Okut</button>';
+  html+='</div>';
+  html+='<button class="btn bk" onclick="CM()" style="margin-top:12px">Kapat</button>';
+  OM(html);
+}
+function ilacDepoYeniKaydet(){
+  var barkod=(document.getElementById('depoYeniBarkod')||{}).value||'';
+  var ticari=(document.getElementById('depoYeniTicari')||{}).value||'';
+  var etken=(document.getElementById('depoYeniEtken')||{}).value||'';
+  var doz=((document.getElementById('depoYeniDoz')||{}).value||'').trim();
+  barkod=barkod.trim();ticari=ticari.trim();etken=etken.trim();
+  if(!barkod){toast('Barkod No gerekli!');return;}
+  if(!ticari&&!etken){toast('Ticari isim veya etken girin!');return;}
+  ilacBarkodKaydetDepo(barkod,ticari,etken,doz);
+  toast('Kaydedildi!');
+  ilacDepoGoster();
+}
+function ilacDepoSil(key){
+  if(!confirm('Bu kaydi silmek istediginizden emin misiniz?'))return;
+  var depo=ilacDepoAl();
+  delete depo[key];
+  ilacDepoKaydet(depo);
+  ilacDepoGoster();
+}
+function depoIlacListesi(ilacIdx){
+  var depo=ilacDepoAl();
+  var keys=Object.keys(depo);
+  if(!keys.length){toast('Depo bos. Once ilac kaydedin.');return;}
+  var html='<h2>&#128138; Ilac Sec</h2>';
+  html+='<input type="text" id="depoAraInput" placeholder="Ara..." class="fi" style="margin-bottom:10px" oninput="depoAraFiltrele()">';
+  html+='<div id="depoIlacListDiv" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto">';
+  keys.forEach(function(k){
+    var d=depo[k];
+    html+='<div class="depo-item" data-barkod="'+k+'" onclick="depoIlacSec('+ilacIdx+',\''+k+'\')" style="background:#f8f9fa;border-radius:10px;padding:12px;cursor:pointer;border:2px solid transparent">';
+    html+='<div style="font-weight:700;font-size:14px">'+(d.ticari||'(ticari yok)')+'</div>';
+    html+='<div style="font-size:12px;color:#666">'+(d.etken||'')+'</div>';
+    html+=(d.doz?'<div style="font-size:11px;color:#27ae60">100lt: '+d.doz+'ml</div>':'');
+    html+='<div style="font-size:10px;color:#bbb;margin-top:2px">'+k+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  html+='<button class="btn bk" onclick="CM()" style="margin-top:12px">Iptal</button>';
+  OM(html);
+  window._depoSecIdx=ilacIdx;
+}
+function depoIlacSec(ilacIdx, barkod){
+  var depo=ilacDepoAl();
+  var d=depo[barkod];
+  if(!d)return;
+  var bEl=document.getElementById('ibk'+ilacIdx);
+  if(bEl)bEl.value=barkod;
+  var tEl=document.getElementById('ilt'+ilacIdx);
+  if(tEl)tEl.value=d.ticari||'';
+  if(d.etken){
+    var etkenler=d.etken.split(',');
+    for(var ei=0;ei<etkenler.length;ei++){
+      var eVal=etkenler[ei].trim();
+      if(!eVal)continue;
+      if(!document.getElementById('ile'+ilacIdx+'_'+ei))etkenEkle(ilacIdx);
+      var eEl=document.getElementById('ile'+ilacIdx+'_'+ei);
+      if(eEl)eEl.value=eVal;
+    }
+  }
+  if(d.doz){
+    var dozEl=document.getElementById('ild'+ilacIdx);
+    if(dozEl&&!dozEl.value)dozEl.value=d.doz;
+  }
+  CM();
+  toast((d.ticari||barkod)+' secildi!');
+}
+function depoAraFiltrele(){
+  var q=(document.getElementById('depoAraInput')||{}).value||'';
+  var items=document.querySelectorAll('#depoIlacListDiv .depo-item');
+  items.forEach(function(el){
+    var txt=el.textContent.toLowerCase();
+    el.style.display=(txt.indexOf(q.toLowerCase())>=0)?'':'none';
+  });
+}
+function ilacBarkodDegisti(ilacIdx){
+  var bEl=document.getElementById('ibk'+ilacIdx);
+  if(!bEl)return;
+  var barkod=bEl.value.trim();
+  if(barkod.length<2)return;
+  var eslesen=ilacBarkodSorgula(barkod);
+  if(!eslesen){
+    var depo=ilacDepoAl();
+    Object.keys(depo).forEach(function(k){
+      if(!eslesen&&depo[k].ticari&&depo[k].ticari.toLowerCase().indexOf(barkod.toLowerCase())===0)
+        eslesen=depo[k];
+    });
+  }
+  if(eslesen){
+    var tEl=document.getElementById('ilt'+ilacIdx);
+    if(tEl&&!tEl.value)tEl.value=eslesen.ticari||'';
+    if(eslesen.etken){
+      var etkenler=eslesen.etken.split(',');
+      for(var ei=0;ei<etkenler.length;ei++){
+        var eVal=etkenler[ei].trim();
+        if(!eVal)continue;
+        if(!document.getElementById('ile'+ilacIdx+'_'+ei))etkenEkle(ilacIdx);
+        var eEl=document.getElementById('ile'+ilacIdx+'_'+ei);
+        if(eEl)eEl.value=eVal;
+      }
+    }
+    if(eslesen.doz){
+      var dozEl=document.getElementById('ild'+ilacIdx);
+      if(dozEl&&!dozEl.value)dozEl.value=eslesen.doz;
+    }
+    toast('Ilac deposundan bulundu!');
+  }
+}
+// PWA barkod okuma - BarcodeDetector API veya kamera
+function _pwaBarkodTara(cb){
+  if(typeof BarcodeDetector!=='undefined'){
+    // BarcodeDetector API destekleniyor
+    var detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e','itf','data_matrix']});
+    var video=document.createElement('video');
+    var canvas=document.createElement('canvas');
+    var ctx=canvas.getContext('2d');
+    var stream=null;
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+      .then(function(s){
+        stream=s;
+        video.srcObject=s;
+        video.play();
+        toast('Kamera acildi - barkodu kameraya tutun');
+        var interval=setInterval(function(){
+          if(video.readyState===video.HAVE_ENOUGH_DATA){
+            canvas.width=video.videoWidth;
+            canvas.height=video.videoHeight;
+            ctx.drawImage(video,0,0);
+            detector.detect(canvas).then(function(codes){
+              if(codes.length>0){
+                clearInterval(interval);
+                stream.getTracks().forEach(function(t){t.stop();});
+                cb(codes[0].rawValue);
+              }
+            }).catch(function(){});
+          }
+        },300);
+        // 30 sn sonra timeout
+        setTimeout(function(){
+          clearInterval(interval);
+          if(stream)stream.getTracks().forEach(function(t){t.stop();});
+          toast('Barkod okunamadi, zaman asimi');
+        },30000);
+      }).catch(function(e){
+        toast('Kamera acılamadi: '+e.message);
+        cb(null);
+      });
+  } else {
+    // Fallback: manuel giriş
+    var val=prompt('BarcodeDetector bu tarayicida desteklenmiyor.\nBarkod numarasini manuel girin:');
+    if(val)cb(val.trim());
+    else cb(null);
+  }
+}
+function ilacDepoBarkodOkutPWA(){
+  _pwaBarkodTara(function(val){
+    if(!val)return;
+    var el=document.getElementById('depoYeniBarkod');
+    if(el){el.value=val;toast('Barkod okundu: '+val);}
+  });
+}
+function depoSorguBarkodOkutPWA(){
+  _pwaBarkodTara(function(val){
+    if(!val)return;
+    var el=document.getElementById('barkodSorguSonuc');
+    var eslesen=ilacBarkodSorgula(val);
+    if(eslesen){
+      var html='<div style="background:#e8f8f0;border-radius:8px;padding:10px">';
+      html+='<div style="font-size:11px;color:#888;margin-bottom:4px">'+val.substring(0,16)+'</div>';
+      html+='<div style="font-weight:800;font-size:15px;color:#1e8449;margin-bottom:4px">'+(eslesen.ticari||'(ticari yok)')+'</div>';
+      html+='<div style="font-size:13px;color:#555;margin-bottom:3px">&#128138; '+(eslesen.etken||'(etken yok)')+'</div>';
+      if(eslesen.doz)html+='<div style="font-size:12px;color:#27ae60">100 lt: '+eslesen.doz+' ml</div>';
+      html+='</div>';
+      if(el)el.innerHTML=html;
+    } else {
+      if(el)el.innerHTML='<div style="background:#fff3cd;border-radius:8px;padding:10px;color:#856404"><b>Kayit bulunamadi</b><br><span style="font-size:12px">'+val.substring(0,16)+'</span></div>';
+    }
+  });
+}
+function barkodTaraIlacPWA(ilacIdx){
+  _pwaBarkodTara(function(val){
+    if(!val)return;
+    var barkodEl=document.getElementById('ibk'+ilacIdx);
+    if(barkodEl)barkodEl.value=val;
+    ilacBarkodDegisti(ilacIdx);
+    toast('Barkod okundu!');
+  });
 }
 
 // ══ ARAMA - Sheet sistemi ile (OM2/CM2 kullanıyor) ══════════════════════════
