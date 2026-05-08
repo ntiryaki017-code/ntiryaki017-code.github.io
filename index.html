@@ -3233,49 +3233,90 @@ function ilacBarkodDegisti(ilacIdx){
 }
 // PWA barkod okuma - BarcodeDetector API veya kamera
 function _pwaBarkodTara(cb){
-  if(typeof BarcodeDetector!=='undefined'){
-    // BarcodeDetector API destekleniyor
-    var detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e','itf','data_matrix']});
-    var video=document.createElement('video');
-    var canvas=document.createElement('canvas');
-    var ctx=canvas.getContext('2d');
-    var stream=null;
-    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
-      .then(function(s){
-        stream=s;
-        video.srcObject=s;
-        video.play();
-        toast('Kamera acildi - barkodu kameraya tutun');
-        var interval=setInterval(function(){
-          if(video.readyState===video.HAVE_ENOUGH_DATA){
-            canvas.width=video.videoWidth;
-            canvas.height=video.videoHeight;
-            ctx.drawImage(video,0,0);
-            detector.detect(canvas).then(function(codes){
-              if(codes.length>0){
-                clearInterval(interval);
-                stream.getTracks().forEach(function(t){t.stop();});
-                cb(codes[0].rawValue);
-              }
-            }).catch(function(){});
-          }
-        },300);
-        // 30 sn sonra timeout
-        setTimeout(function(){
-          clearInterval(interval);
-          if(stream)stream.getTracks().forEach(function(t){t.stop();});
-          toast('Barkod okunamadi, zaman asimi');
-        },30000);
-      }).catch(function(e){
-        toast('Kamera acılamadi: '+e.message);
-        cb(null);
-      });
-  } else {
-    // Fallback: manuel giriş
-    var val=prompt('BarcodeDetector bu tarayicida desteklenmiyor.\nBarkod numarasini manuel girin:');
+  // Overlay olustur
+  var overlay=document.createElement('div');
+  overlay.id='barkodOverlay';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center';
+
+  var video=document.createElement('video');
+  video.setAttribute('playsinline','');
+  video.setAttribute('autoplay','');
+  video.style.cssText='width:100%;max-height:70vh;object-fit:cover';
+
+  var guide=document.createElement('div');
+  guide.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:160px;border:3px solid #27ae60;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)';
+
+  var label=document.createElement('div');
+  label.style.cssText='color:#fff;font-size:14px;font-weight:700;margin-top:16px;text-align:center';
+  label.textContent='Barkodu cerceve icine alin';
+
+  var iptalBtn=document.createElement('button');
+  iptalBtn.textContent='Iptal';
+  iptalBtn.style.cssText='margin-top:20px;padding:12px 32px;border-radius:10px;border:none;background:#e74c3c;color:#fff;font-size:15px;font-weight:700;cursor:pointer';
+
+  var videoWrap=document.createElement('div');
+  videoWrap.style.cssText='position:relative;width:100%;max-width:480px';
+  videoWrap.appendChild(video);
+  videoWrap.appendChild(guide);
+
+  overlay.appendChild(videoWrap);
+  overlay.appendChild(label);
+  overlay.appendChild(iptalBtn);
+  document.body.appendChild(overlay);
+
+  var stream=null;
+  var interval=null;
+  var timeout=null;
+
+  function kapat(){
+    if(interval)clearInterval(interval);
+    if(timeout)clearTimeout(timeout);
+    if(stream)stream.getTracks().forEach(function(t){t.stop();});
+    if(overlay.parentNode)overlay.parentNode.removeChild(overlay);
+  }
+
+  iptalBtn.onclick=function(){kapat();cb(null);};
+
+  if(typeof BarcodeDetector==='undefined'){
+    kapat();
+    var val=prompt('Barkod numarasini girin:');
     if(val)cb(val.trim());
     else cb(null);
+    return;
   }
+
+  var detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','qr_code','upc_a','upc_e','itf','data_matrix']});
+  var canvas=document.createElement('canvas');
+  var ctx=canvas.getContext('2d');
+
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}})
+    .then(function(s){
+      stream=s;
+      video.srcObject=s;
+      video.play();
+      interval=setInterval(function(){
+        if(video.readyState===video.HAVE_ENOUGH_DATA){
+          canvas.width=video.videoWidth;
+          canvas.height=video.videoHeight;
+          ctx.drawImage(video,0,0);
+          detector.detect(canvas).then(function(codes){
+            if(codes.length>0){
+              kapat();
+              cb(codes[0].rawValue);
+            }
+          }).catch(function(){});
+        }
+      },250);
+      timeout=setTimeout(function(){
+        kapat();
+        toast('Barkod okunamadi - zaman asimi');
+        cb(null);
+      },30000);
+    }).catch(function(e){
+      kapat();
+      toast('Kamera acılamadi: '+e.message);
+      cb(null);
+    });
 }
 function ilacDepoBarkodOkutPWA(){
   _pwaBarkodTara(function(val){
